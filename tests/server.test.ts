@@ -11,24 +11,28 @@ const tools: ModelServerTool[] = [
     description: "Create an image with Flux Test.",
     service: "flux-test",
     action: "text_to_image",
-    models: ["flux-test-pro"],
-    inputSchema: { prompt: { required: true, type: "string" }, steps: { type: "integer", min: 1, max: 50 } }
+    models: ["flux-test-pro"]
   },
   {
     name: "create_music",
     description: "Create music with Suno Test.",
     service: "suno-test",
     action: "text_to_music",
-    models: ["suno-test"],
-    inputSchema: fixtureContract.actions["suno-test/text-to-music"].fields_by_model["suno-test"]
+    models: ["suno-test"]
   },
   {
     name: "create_lyrics",
     description: "Generate lyrics with Suno Test.",
     service: "suno-test",
     action: "generate_lyrics",
-    models: [],
-    inputSchema: fixtureContract.actions["suno-test/generate-lyrics"].fields_by_model["_"]
+    models: []
+  },
+  {
+    name: "edit_image",
+    description: "Edit an image with Seedream Test.",
+    service: "seedream-test",
+    action: "edit_image",
+    models: ["seedream-test-quality", "seedream-test-resolution"]
   }
 ];
 
@@ -72,7 +76,7 @@ describe("createModelServer", () => {
   it("registers exactly the injected tools", async () => {
     mcpClient = await connect(mockClient().client);
     const tools = await mcpClient.listTools();
-    expect(tools.tools.map((t) => t.name).sort()).toEqual(["create_image", "create_lyrics", "create_music"]);
+    expect(tools.tools.map((t) => t.name).sort()).toEqual(["create_image", "create_lyrics", "create_music", "edit_image"]);
   });
 
   it("validates, creates a task via the injected client, and returns a price snapshot", async () => {
@@ -98,6 +102,38 @@ describe("createModelServer", () => {
     expect(payload.error).toBeUndefined();
     expect(payload).toMatchObject({ task_id: "task_1", status: "queued" });
     expect(payload.price.pricing).toMatchObject({ unit_price_cents: 1 });
+  });
+
+  it("accepts a request that omits a field only its sibling model requires", async () => {
+    const { client, createTask } = mockClient();
+    mcpClient = await connect(client);
+
+    const result = await mcpClient.callTool({
+      name: "edit_image",
+      arguments: { model: "seedream-test-resolution", source_image_urls: ["https://example.com/a.png"], wait: false }
+    });
+    const payload = parseText(result);
+
+    expect(payload.error).toBeUndefined();
+    expect(createTask).toHaveBeenCalledWith("seedream-test", "edit_image", {
+      source_image_urls: ["https://example.com/a.png"],
+      model: "seedream-test-resolution"
+    });
+    expect(payload).toMatchObject({ task_id: "task_1", status: "queued" });
+  });
+
+  it("rejects a request missing a field the selected model requires (divergent required)", async () => {
+    const { client, createTask } = mockClient();
+    mcpClient = await connect(client);
+
+    const result = await mcpClient.callTool({
+      name: "edit_image",
+      arguments: { model: "seedream-test-quality", source_image_urls: ["https://example.com/a.png"], output_quality: "high", wait: false }
+    });
+    const payload = parseText(result);
+
+    expect(payload.error).toBeDefined();
+    expect(createTask).not.toHaveBeenCalled();
   });
 
   it("rejects requests that violate the endpoint input rules without calling the client", async () => {

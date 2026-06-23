@@ -1,8 +1,29 @@
 import type { Contract, InputRule, PricingConfig } from "../src/types.js";
 
 export const fixtureContract: Contract = {
-  catalog_models: ["flux-test-pro", "suno-test"],
+  catalog_models: ["flux-test-pro", "suno-test", "seedream-test-quality", "seedream-test-resolution"],
   actions: {
+    // Divergent-required fixture: one model requires aspect_ratio + output_quality,
+    // the other requires only source_image_urls (the rest optional). Exercises
+    // per-model required validation against a single advertised tool schema.
+    "seedream-test/edit-image": {
+      model: "Seedream Test",
+      endpoint: "edit_image",
+      models: ["seedream-test-quality", "seedream-test-resolution"],
+      fields_by_model: {
+        "seedream-test-quality": {
+          aspect_ratio: { required: true, enum: ["1:1", "16:9"] },
+          output_quality: { required: true, enum: ["basic", "high"] },
+          source_image_urls: { required: true, type: "array" }
+        },
+        "seedream-test-resolution": {
+          source_image_urls: { required: true, type: "array" },
+          aspect_ratio: { enum: ["16:9", "9:16"] },
+          output_count: { enum: [1, 2, 3, 4] },
+          output_resolution: { enum: ["1k", "2k", "4k"] }
+        }
+      }
+    },
     "flux-test/text-to-image": {
       model: "Flux Test",
       endpoint: "text_to_image",
@@ -47,6 +68,8 @@ export const fixtureContract: Contract = {
 export const fixturePricing: PricingConfig = {
   endpoints: {
     "flux-test-pro/text_to_image": { unit_price_cents: 10 },
+    "seedream-test-quality/edit_image": { unit_price_cents: 20 },
+    "seedream-test-resolution/edit_image": { unit_price_cents: 25 },
     "_/generate_lyrics": { unit_price_cents: 1 }
   }
 };

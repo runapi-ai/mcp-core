@@ -16,6 +16,8 @@ export type ContractAction = {
   model: string;
   endpoint: string;
   models: string[];
+  // Endpoint-level cross-field rules (ADR-0010), a sibling of fields_by_model.
+  rules?: InputRule[];
   fields_by_model: Record<string, Record<string, ContractField>>;
 };
 

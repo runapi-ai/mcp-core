@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Contract, ContractField, InputRule, PricingConfig, RunApiTaskResponse } from "./types.js";
-import { findModelForAction } from "./contract.js";
+import { declaredFieldsForAction, findAction, findModelForAction } from "./contract.js";
 import { priceForModel } from "./pricing.js";
 import { validateInputRules } from "./input-rules.js";
 import { validateParams, zodShapeForFields } from "./schema.js";
@@ -15,7 +15,6 @@ export type ModelServerTool = {
   service: string;
   action: string;
   models: string[];
-  inputSchema: Record<string, ContractField>;
 };
 
 export type CreateModelServerOptions = {
@@ -54,7 +53,9 @@ export function createModelServer(options: CreateModelServerOptions): McpServer 
   );
 
   for (const tool of tools) {
-    server.tool(tool.name, tool.description, toolShape(tool), async (args, extra) => {
+    const action = findAction(tool.service, tool.action, contract);
+    const declaredFields = action ? declaredFieldsForAction(action) : {};
+    server.tool(tool.name, tool.description, toolShape(declaredFields, tool.models), async (args, extra) => {
       const { wait = true, timeout_ms, poll_interval_ms, model, ...params } = args as Record<string, unknown> & {
         wait?: boolean;
         timeout_ms?: number;
@@ -71,10 +72,13 @@ export function createModelServer(options: CreateModelServerOptions): McpServer 
           });
         }
 
+        // Validate against the resolved model's own field roster so divergent
+        // per-model required fields are enforced correctly (the advertised tool
+        // schema declares the union with required relaxed to the intersection).
         // Send the resolved model (explicit arg or the line's default) so
         // model-optional create calls still satisfy endpoints that require it.
         // No-model endpoints (models: []) resolve without a model — omit it.
-        const body = validateParams(tool.inputSchema, {
+        const body = validateParams(info.fields, {
           ...params,
           ...(info.model ? { model: info.model } : {})
         });
@@ -134,16 +138,16 @@ export function createModelServer(options: CreateModelServerOptions): McpServer 
   return server;
 }
 
-function toolShape(tool: ModelServerTool): Record<string, z.ZodTypeAny> {
+function toolShape(fields: Record<string, ContractField>, models: string[]): Record<string, z.ZodTypeAny> {
   const shape: Record<string, z.ZodTypeAny> = {
-    ...zodShapeForFields(tool.inputSchema),
+    ...zodShapeForFields(fields),
     wait: z.boolean().default(true).describe("Poll until the task reaches a terminal status."),
     timeout_ms: z.number().int().positive().optional(),
     poll_interval_ms: z.number().int().positive().optional()
   };
 
-  if (tool.models.length > 0) {
-    shape.model = z.enum(tool.models as [string, ...string[]]).optional().describe("RunAPI model slug for this model line.");
+  if (models.length > 0) {
+    shape.model = z.enum(models as [string, ...string[]]).optional().describe("RunAPI model slug for this model line.");
   }
 
   return shape;

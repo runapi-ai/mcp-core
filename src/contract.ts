@@ -90,6 +90,58 @@ export function fieldsForModel(action: ContractAction, model: string): Record<st
   return action.fields_by_model[model] || action.fields_by_model._ || {};
 }
 
+const RESERVED_DECLARED_FIELDS = new Set(["model"]);
+
+// Union of every roster's fields for an action's advertised tool schema.
+//
+// Canonical fields share type/shape across models (ADR-0007); what diverges per
+// model is the allowed value set and whether the field is required. So the
+// advertised schema is the loosest envelope that accepts every model's valid
+// input, and the per-model runtime check (validateParams against the resolved
+// roster) does the precise enforcement:
+//   - required: only when required in every roster (the safe intersection);
+//     divergent-required fields stay optional here.
+//   - enum: the union of every roster's values, but only when every roster that
+//     defines the field constrains it — if any model leaves it free-form, the
+//     field is advertised unconstrained. Otherwise the declared schema could
+//     reject a value valid for one model before its runtime check runs.
+//   - other constraints (type/min/max): first-seen, since canonical fields do
+//     not diverge on those.
+export function declaredFieldsForAction(action: ContractAction): Record<string, ContractField> {
+  const rosters = action.models.length > 0 ? action.models : ["_"];
+  const defsByName = new Map<string, ContractField[]>();
+  const order: string[] = [];
+  for (const roster of rosters) {
+    for (const [name, field] of Object.entries(fieldsForModel(action, roster))) {
+      if (RESERVED_DECLARED_FIELDS.has(name)) {
+        continue;
+      }
+      if (!defsByName.has(name)) {
+        defsByName.set(name, []);
+        order.push(name);
+      }
+      defsByName.get(name)!.push(field);
+    }
+  }
+
+  const merged: Record<string, ContractField> = {};
+  for (const name of order) {
+    const defs = defsByName.get(name)!;
+    const field: ContractField = { ...defs[0] };
+
+    if (defs.every((def) => def.enum?.length)) {
+      const seen = new Set<unknown>();
+      field.enum = defs.flatMap((def) => def.enum!).filter((value) => !seen.has(value) && seen.add(value));
+    } else {
+      delete field.enum;
+    }
+
+    field.required = rosters.every((roster) => fieldsForModel(action, roster)[name]?.required === true);
+    merged[name] = field;
+  }
+  return merged;
+}
+
 export function fieldSummary(fields: Record<string, ContractField>) {
   return Object.entries(fields).map(([name, field]) => ({
     name,
