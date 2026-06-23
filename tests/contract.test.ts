@@ -12,7 +12,6 @@ describe("contract queries (injection)", () => {
     expect(findModel("flux-test-pro", fixtureContract)).toMatchObject({
       service: "flux-test",
       action: "text_to_image",
-      provider: "Black Forest Labs",
       model_line: "Flux Test"
     });
   });
@@ -31,6 +30,13 @@ describe("contract queries (injection)", () => {
   it("returns undefined for an unknown model on an action", () => {
     expect(findModelForAction("flux-test", "text_to_image", "nope", fixtureContract)).toBeUndefined();
     expect(findModels("nope", fixtureContract)).toEqual([]);
+  });
+
+  it("resolves a no-model endpoint from the \"_\" roster", () => {
+    const info = findModelForAction("suno-test", "generate_lyrics", undefined, fixtureContract);
+    expect(info?.model).toBeUndefined();
+    expect(info?.action).toBe("generate_lyrics");
+    expect(Object.keys(info?.fields ?? {}).sort()).toEqual(["callback_url", "prompt"]);
   });
 
   it("groups actions by modality", () => {

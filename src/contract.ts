@@ -8,7 +8,6 @@ export function listContractModels(source: Contract): ModelInfo[] {
       service,
       action: action.endpoint,
       route_action: routeAction(actionSlug),
-      provider: action.provider,
       model_line: action.model,
       model,
       fields: fieldsForModel(action, model)
@@ -59,6 +58,19 @@ export function findModelForAction(service: string, action: string, model: strin
     return undefined;
   }
 
+  // No-model endpoints (models: []) carry their fields under the "_" roster and
+  // resolve to a ModelInfo with no model slug.
+  if (entry.models.length === 0) {
+    return {
+      service,
+      action: entry.endpoint,
+      route_action: entry.endpoint,
+      model_line: entry.model,
+      model: undefined,
+      fields: fieldsForModel(entry, "_")
+    };
+  }
+
   const selectedModel = model || entry.models[0];
   if (!entry.models.includes(selectedModel)) {
     return undefined;
@@ -68,7 +80,6 @@ export function findModelForAction(service: string, action: string, model: strin
     service,
     action: entry.endpoint,
     route_action: entry.endpoint,
-    provider: entry.provider,
     model_line: entry.model,
     model: selectedModel,
     fields: fieldsForModel(entry, selectedModel)
@@ -76,7 +87,7 @@ export function findModelForAction(service: string, action: string, model: strin
 }
 
 export function fieldsForModel(action: ContractAction, model: string): Record<string, ContractField> {
-  return action.fields_by_model[model] || action.fields_by_model.__nil_model__ || {};
+  return action.fields_by_model[model] || action.fields_by_model._ || {};
 }
 
 export function fieldSummary(fields: Record<string, ContractField>) {

@@ -71,9 +71,12 @@ export function createModelServer(options: CreateModelServerOptions): McpServer 
           });
         }
 
+        // Send the resolved model (explicit arg or the line's default) so
+        // model-optional create calls still satisfy endpoints that require it.
+        // No-model endpoints (models: []) resolve without a model — omit it.
         const body = validateParams(tool.inputSchema, {
           ...params,
-          ...(model ? { model } : {})
+          ...(info.model ? { model: info.model } : {})
         });
 
         const ruleError = validateInputRules(inputRules[tool.action] ?? [], body);

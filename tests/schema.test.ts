@@ -27,6 +27,21 @@ describe("schema", () => {
     expect(() => validateParams(fields, { prompt: "hi", mode: "turbo" })).toThrow();
   });
 
+  it("types plain string fields and enforces required strings", () => {
+    expect(() => validateParams(fields, {})).toThrow();
+    expect(() => validateParams(fields, { prompt: 123 })).toThrow();
+    expect(validateParams(fields, { prompt: "hi" })).toMatchObject({ prompt: "hi" });
+  });
+
+  it("treats min/max as string length when the field carries the length marker", () => {
+    const lengthFields: Record<string, ContractField> = {
+      caption: { type: "string", min: 1, max: 5 },
+      headline: { length: true, min: 1, max: 5, required: true }
+    };
+    expect(() => validateParams(lengthFields, { headline: "way too long" })).toThrow();
+    expect(validateParams(lengthFields, { headline: "ok", caption: "fine" })).toMatchObject({ headline: "ok" });
+  });
+
   it("exposes a reusable zod shape builder", () => {
     const shape = zodShapeForFields(fields);
     expect(Object.keys(shape).sort()).toEqual(["mode", "prompt", "steps"]);

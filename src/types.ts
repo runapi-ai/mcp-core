@@ -6,12 +6,13 @@ export type ContractField = {
   max?: number;
   minimum?: number;
   maximum?: number;
+  // When true, min/max are string-length bounds rather than numeric value bounds.
+  length?: boolean;
   type?: string;
   description?: string;
 };
 
 export type ContractAction = {
-  provider: string;
   model: string;
   endpoint: string;
   models: string[];
@@ -19,29 +20,29 @@ export type ContractAction = {
 };
 
 export type Contract = {
-  generated_by: string;
   catalog_models: string[];
   actions: Record<string, ContractAction>;
-  unresolved_actions: string[];
 };
 
+// Final customer-facing pricing embedded in published packages: prices are
+// already cost × markup, keyed neutrally by `${model}/${endpoint}` with no
+// provider or markup decomposition.
 export type PricingConfig = {
-  markup_rate?: number;
-  provider_markup?: Record<string, number>;
-  endpoint_markup?: Record<string, number>;
   endpoints?: Record<string, PricingEndpoint>;
 };
 
 export type PricingEndpoint = {
-  cost_unit_price_cents?: number;
-  cost_input_price_per_1m_cents?: number;
-  cost_output_price_per_1m_cents?: number;
-  cost_cache_read_price_per_1m_cents?: number;
-  cost_cache_write_5m_price_per_1m_cents?: number;
-  cost_cache_write_1h_price_per_1m_cents?: number;
-  cost_billing_config?: {
+  unit_price_cents?: number;
+  input_price_per_1m_cents?: number;
+  output_price_per_1m_cents?: number;
+  cache_read_price_per_1m_cents?: number;
+  cache_write_5m_price_per_1m_cents?: number;
+  cache_write_1h_price_per_1m_cents?: number;
+  billing_config?: {
     key?: string;
+    keys?: string[];
     overrides?: Record<string, number>;
+    matrix?: Record<string, unknown>;
   };
 };
 
@@ -49,9 +50,9 @@ export type ModelInfo = {
   service: string;
   action: string;
   route_action: string;
-  provider: string;
   model_line: string;
-  model: string;
+  // Undefined for no-model endpoints (contract actions with models: []).
+  model?: string;
   fields: Record<string, ContractField>;
 };
 

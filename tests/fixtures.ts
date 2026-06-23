@@ -1,11 +1,9 @@
 import type { Contract, InputRule, PricingConfig } from "../src/types.js";
 
 export const fixtureContract: Contract = {
-  generated_by: "test",
   catalog_models: ["flux-test-pro", "suno-test"],
   actions: {
     "flux-test/text-to-image": {
-      provider: "Black Forest Labs",
       model: "Flux Test",
       endpoint: "text_to_image",
       models: ["flux-test-pro"],
@@ -17,7 +15,6 @@ export const fixtureContract: Contract = {
       }
     },
     "suno-test/text-to-music": {
-      provider: "Suno",
       model: "Suno Test",
       endpoint: "text_to_music",
       models: ["suno-test"],
@@ -30,15 +27,27 @@ export const fixtureContract: Contract = {
           title: { type: "string" }
         }
       }
+    },
+    "suno-test/generate-lyrics": {
+      model: "Suno Test",
+      endpoint: "generate_lyrics",
+      models: [],
+      fields_by_model: {
+        "_": {
+          prompt: { type: "string", description: "Lyrics generation prompt." },
+          callback_url: { type: "string", description: "Webhook URL for async notifications." }
+        }
+      }
     }
-  },
-  unresolved_actions: []
+  }
 };
 
+// Final embedded shape shipped in packages: neutral keys, final customer prices.
+// No-model endpoints are keyed under the "_" sentinel.
 export const fixturePricing: PricingConfig = {
-  markup_rate: 2,
   endpoints: {
-    "Black Forest Labs/Flux Test/flux-test-pro/text_to_image": { cost_unit_price_cents: 5 }
+    "flux-test-pro/text_to_image": { unit_price_cents: 10 },
+    "_/generate_lyrics": { unit_price_cents: 1 }
   }
 };
 

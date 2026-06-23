@@ -14,12 +14,22 @@ export function zodShapeForFields(fields: Record<string, ContractField>): Record
 function zodForField(field: ContractField): z.ZodTypeAny {
   let schema: z.ZodTypeAny;
 
+  const min = field.min ?? field.minimum;
+  const max = field.max ?? field.maximum;
+
   if (field.enum?.length) {
     schema = z.union(field.enum.map((value) => literalFor(value)) as [z.ZodLiteral<unknown>, z.ZodLiteral<unknown>, ...z.ZodLiteral<unknown>[]]);
-  } else if (field.type === "number" || field.type === "integer" || field.min !== undefined || field.max !== undefined || field.minimum !== undefined || field.maximum !== undefined) {
+  } else if (field.type === "string" || field.length) {
+    let stringSchema = z.string();
+    if (min !== undefined) {
+      stringSchema = stringSchema.min(min);
+    }
+    if (max !== undefined) {
+      stringSchema = stringSchema.max(max);
+    }
+    schema = stringSchema;
+  } else if (field.type === "number" || field.type === "integer" || min !== undefined || max !== undefined) {
     let numberSchema = z.number();
-    const min = field.min ?? field.minimum;
-    const max = field.max ?? field.maximum;
     if (min !== undefined) {
       numberSchema = numberSchema.min(min);
     }
