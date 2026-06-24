@@ -130,8 +130,7 @@ export function declaredFieldsForAction(action: ContractAction): Record<string, 
     const field: ContractField = { ...defs[0] };
 
     if (defs.every((def) => def.enum?.length)) {
-      const seen = new Set<unknown>();
-      field.enum = defs.flatMap((def) => def.enum!).filter((value) => !seen.has(value) && seen.add(value));
+      field.enum = Array.from(new Set(defs.flatMap((def) => def.enum!)));
     } else {
       delete field.enum;
     }
