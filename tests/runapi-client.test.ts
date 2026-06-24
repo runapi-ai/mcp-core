@@ -11,7 +11,7 @@ describe("RunApiClient", () => {
     const fetchImpl = vi.fn(async () => jsonResponse({ data: [] }));
     await new RunApiClient({ baseUrl: "https://runapi.ai" }, fetchImpl as any).listModels();
 
-    expect(USER_AGENT).toBe("@runapi.ai/mcp-core/0.1.3");
+    expect(USER_AGENT).toBe("@runapi.ai/mcp-core/0.1.4");
     expect(fetchImpl).toHaveBeenCalledWith(new URL("https://runapi.ai/v1/models"), expect.objectContaining({
       headers: expect.objectContaining({ "user-agent": USER_AGENT })
     }));
