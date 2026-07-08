@@ -20,7 +20,7 @@ export function friendlyError(error: unknown): string {
   if (error instanceof RunApiClientError) {
     switch (error.status) {
       case 401:
-        return "RunAPI rejected the API key. Check RUNAPI_API_KEY or ~/.config/runapi/config.json.";
+        return "RunAPI rejected the API key. Call the login tool or run `runapi login`, then retry. Headless hosts can update RUNAPI_API_KEY or ~/.config/runapi/config.json.";
       case 402:
         return "The RunAPI account has insufficient credits. Add credits in the RunAPI dashboard, then retry.";
       case 429:

@@ -90,7 +90,12 @@ Connect the returned server with an MCP transport, for example `StdioServerTrans
 
 ## Authentication
 
-Authenticated RunAPI calls use `RUNAPI_API_KEY` by default:
+Authenticated RunAPI calls resolve auth in this order:
+
+1. `RUNAPI_API_KEY`, useful for headless and CI hosts.
+2. `~/.config/runapi/config.json`, created by the MCP `login` tool or `runapi login`.
+
+Headless hosts can set:
 
 ```bash
 export RUNAPI_API_KEY=your_key_here
@@ -100,7 +105,7 @@ export RUNAPI_API_KEY=your_key_here
 
 ## Package Design
 
-`@runapi.ai/mcp-core` does not read files at runtime. Server packages pass their embedded contract and pricing JSON into the library, which keeps published MCP packages deterministic and easy to smoke test.
+`@runapi.ai/mcp-core` does not read catalog or pricing files at runtime. Server packages pass their embedded contract and pricing JSON into the library, which keeps published MCP packages deterministic and easy to smoke test.
 
 The package is ESM-only and ships TypeScript declarations.
 

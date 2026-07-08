@@ -42,7 +42,7 @@ function mockClient() {
   return { client: { createTask, pollTask } as unknown as RunApiClient, createTask, pollTask };
 }
 
-async function connect(client: RunApiClient) {
+async function connect(client: RunApiClient, options: { authTools?: false } = {}) {
   const server = createModelServer({
     name: "@runapi.ai/flux-test",
     version: "1.2.3",
@@ -51,7 +51,8 @@ async function connect(client: RunApiClient) {
     pricing: fixturePricing,
     inputRules: sunoInputRules,
     tools,
-    client
+    client,
+    ...options
   });
 
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
@@ -73,8 +74,14 @@ afterEach(async () => {
 });
 
 describe("createModelServer", () => {
-  it("registers exactly the injected tools", async () => {
+  it("registers the login tool and injected model tools by default", async () => {
     mcpClient = await connect(mockClient().client);
+    const tools = await mcpClient.listTools();
+    expect(tools.tools.map((t) => t.name).sort()).toEqual(["create_image", "create_lyrics", "create_music", "edit_image", "login"]);
+  });
+
+  it("can opt out of auth tools", async () => {
+    mcpClient = await connect(mockClient().client, { authTools: false });
     const tools = await mcpClient.listTools();
     expect(tools.tools.map((t) => t.name).sort()).toEqual(["create_image", "create_lyrics", "create_music", "edit_image"]);
   });
@@ -110,13 +117,13 @@ describe("createModelServer", () => {
 
     const result = await mcpClient.callTool({
       name: "edit_image",
-      arguments: { model: "seedream-test-resolution", source_image_urls: ["https://example.com/a.png"], wait: false }
+      arguments: { model: "seedream-test-resolution", source_image_urls: ["https://example.test/a.png"], wait: false }
     });
     const payload = parseText(result);
 
     expect(payload.error).toBeUndefined();
     expect(createTask).toHaveBeenCalledWith("seedream-test", "edit_image", {
-      source_image_urls: ["https://example.com/a.png"],
+      source_image_urls: ["https://example.test/a.png"],
       model: "seedream-test-resolution"
     });
     expect(payload).toMatchObject({ task_id: "task_1", status: "queued" });
@@ -128,7 +135,7 @@ describe("createModelServer", () => {
 
     const result = await mcpClient.callTool({
       name: "edit_image",
-      arguments: { model: "seedream-test-quality", source_image_urls: ["https://example.com/a.png"], output_quality: "high", wait: false }
+      arguments: { model: "seedream-test-quality", source_image_urls: ["https://example.test/a.png"], output_quality: "high", wait: false }
     });
     const payload = parseText(result);
 

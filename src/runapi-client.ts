@@ -9,12 +9,14 @@ type RequestOptions = {
   headers?: Record<string, string>;
 };
 
+type RunApiConfigSource = RunApiConfig | (() => RunApiConfig);
+
 const COMPLETED_STATUSES = new Set(["completed", "complete", "succeeded", "success", "finished"]);
 const FAILED_STATUSES = new Set(["failed", "error", "canceled", "cancelled", "timeout"]);
 
 export class RunApiClient {
   constructor(
-    private readonly config: RunApiConfig = loadConfig(),
+    private readonly configSource: RunApiConfigSource = loadConfig,
     private readonly fetchImpl: typeof fetch = fetch,
     private readonly userAgent: string = USER_AGENT
   ) {}
@@ -80,7 +82,8 @@ export class RunApiClient {
   }
 
   private async request<T = unknown>(method: string, requestPath: string, options: RequestOptions = {}): Promise<T> {
-    const url = new URL(requestPath, this.config.baseUrl.replace(/\/+$/, ""));
+    const config = this.config();
+    const url = new URL(requestPath, config.baseUrl.replace(/\/+$/, ""));
     const headers: Record<string, string> = {
       accept: "application/json",
       "user-agent": this.userAgent,
@@ -92,7 +95,7 @@ export class RunApiClient {
     }
 
     if (options.auth !== false) {
-      headers.authorization = `Bearer ${requireApiKey(this.config)}`;
+      headers.authorization = `Bearer ${requireApiKey(config)}`;
     }
 
     const response = await this.fetchImpl(url, {
@@ -110,6 +113,10 @@ export class RunApiClient {
     }
 
     return await response.json() as T;
+  }
+
+  private config(): RunApiConfig {
+    return typeof this.configSource === "function" ? this.configSource() : this.configSource;
   }
 }
 

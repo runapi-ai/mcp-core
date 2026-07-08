@@ -8,6 +8,7 @@ import { validateParams, zodShapeForFields } from "./schema.js";
 import { RunApiClient, taskIdFromResponse, taskStatus } from "./runapi-client.js";
 import { friendlyError } from "./errors.js";
 import { jsonText } from "./tool-response.js";
+import { registerLoginTool, type LoginDependencies } from "./login.js";
 
 export type ModelServerTool = {
   name: string;
@@ -30,6 +31,7 @@ export type CreateModelServerOptions = {
   // client. API-698 does not need to supply these.
   client?: RunApiClient;
   instructions?: string;
+  authTools?: false | LoginDependencies;
 };
 
 // Builds a per-model RunAPI MCP server from injected catalog data — no disk
@@ -47,10 +49,15 @@ export function createModelServer(options: CreateModelServerOptions): McpServer 
     {
       instructions: options.instructions ?? defaultInstructions(lineSlug),
       capabilities: {
-        tools: {}
+        tools: {},
+        logging: {}
       }
     }
   );
+
+  if (options.authTools !== false) {
+    registerLoginTool(server, typeof options.authTools === "object" ? options.authTools : undefined);
+  }
 
   for (const tool of tools) {
     const action = findAction(tool.service, tool.action, contract);
@@ -176,6 +183,6 @@ function defaultInstructions(lineSlug: string): string {
     "2. Confirm before expensive, long-running, or batch requests.",
     "3. Present results as task ID, status, output URLs, and cost fields when available.",
     "4. Do not describe generated media as if you inspected it.",
-    "5. On an API key error, guide the user to configure RUNAPI_API_KEY or ~/.config/runapi/config.json."
+    "5. On an API key error, call the login tool for interactive browser auth; headless hosts can use RUNAPI_API_KEY or ~/.config/runapi/config.json."
   ].join("\n");
 }
