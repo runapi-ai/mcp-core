@@ -24,6 +24,15 @@ describe("validateInputRules (engine)", () => {
     expect(error).toContain("must not include lyrics");
   });
 
+  it("supports forbidden-only rules", () => {
+    const error = validateInputRules(
+      [{ when: { model: "kling-v3-turbo-image-to-video" }, forbidden: ["negative_prompt"], description: "V3 Turbo does not accept negative_prompt." }],
+      { model: "kling-v3-turbo-image-to-video", negative_prompt: "no blur" }
+    );
+
+    expect(error).toBe("model=kling-v3-turbo-image-to-video must not include negative_prompt.");
+  });
+
   it("passes when the matched rule is satisfied", () => {
     expect(validateInputRules(rules, { vocal_mode: "auto_lyrics", prompt: "a song" })).toBeUndefined();
   });

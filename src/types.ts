@@ -123,7 +123,7 @@ export type PollingOptions = {
 
 export type InputRule = {
   when: Record<string, unknown>;
-  required: string[];
-  forbidden: string[];
-  description: string;
+  required?: string[];
+  forbidden?: string[];
+  description?: string;
 };

@@ -19,8 +19,10 @@ export function validateInputRules(rules: InputRule[], params: Record<string, un
     return undefined;
   }
 
-  const missing = rule.required.filter((field) => !hasValue(params[field]));
-  const presentForbidden = rule.forbidden.filter((field) => hasValue(params[field]));
+  const required = rule.required ?? [];
+  const forbidden = rule.forbidden ?? [];
+  const missing = required.filter((field) => !hasValue(params[field]));
+  const presentForbidden = forbidden.filter((field) => hasValue(params[field]));
   if (missing.length === 0 && presentForbidden.length === 0) {
     return undefined;
   }

@@ -5,6 +5,10 @@ import { describe, expect, it, vi } from "vitest";
 import { USER_AGENT } from "../src/constants.js";
 import { RunApiClient, taskIdFromResponse, taskStatus } from "../src/runapi-client.js";
 
+const packageMetadata = JSON.parse(
+  fs.readFileSync(new URL("../package.json", import.meta.url), "utf8")
+) as { name: string; version: string };
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 }
@@ -14,7 +18,7 @@ describe("RunApiClient", () => {
     const fetchImpl = vi.fn(async () => jsonResponse({ data: [] }));
     await new RunApiClient({ baseUrl: "https://runapi.ai" }, fetchImpl as any).listModels();
 
-    expect(USER_AGENT).toBe("@runapi.ai/mcp-core/0.1.5");
+    expect(USER_AGENT).toBe(`${packageMetadata.name}/${packageMetadata.version}`);
     expect(fetchImpl).toHaveBeenCalledWith(new URL("https://runapi.ai/v1/models"), expect.objectContaining({
       headers: expect.objectContaining({ "user-agent": USER_AGENT })
     }));
