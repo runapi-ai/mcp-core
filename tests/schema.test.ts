@@ -46,4 +46,43 @@ describe("schema", () => {
     const shape = zodShapeForFields(fields);
     expect(Object.keys(shape).sort()).toEqual(["mode", "prompt", "steps"]);
   });
+
+  it("enforces nested array item contracts", () => {
+    const nestedFields: Record<string, ContractField> = {
+      speakers: {
+        type: "array",
+        required: true,
+        min_items: 1,
+        items: {
+          type: "object",
+          properties: {
+            speaker_id: { type: "string", required: true, pattern: "^Speaker [1-9][0-9]*$" },
+            voice_name: { type: "string", required: true, enum: ["Fenrir", "Puck"] }
+          }
+        }
+      },
+      dialogue_turns: {
+        type: "array",
+        required: true,
+        min_items: 1,
+        items: {
+          type: "object",
+          properties: {
+            speaker_id: { type: "string", required: true },
+            text: { type: "string", required: true, length: true, max: 10_000 }
+          }
+        }
+      }
+    };
+
+    expect(validateParams(nestedFields, {
+      speakers: [{ speaker_id: "Speaker 1", voice_name: "Fenrir" }],
+      dialogue_turns: [{ speaker_id: "Speaker 1", text: "Welcome." }]
+    })).toMatchObject({ speakers: [{ speaker_id: "Speaker 1", voice_name: "Fenrir" }] });
+    expect(() => validateParams(nestedFields, { speakers: [], dialogue_turns: [] })).toThrow();
+    expect(() => validateParams(nestedFields, {
+      speakers: [{ speaker_id: "Host", voice_name: "Unknown" }],
+      dialogue_turns: [{ speaker_id: "Host", text: "Welcome." }]
+    })).toThrow();
+  });
 });

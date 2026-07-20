@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.1.7](https://github.com/runapi-ai/mcp-core/releases/tag/v0.1.7) - 2026-07-20
+
+### Changed
+- Reject noncanonical task UUIDs before authenticated polling requests and encode valid task path segments.
+- Publish and validate nested array and object field constraints in MCP tool schemas.
+- Emit JSON Schema minItems and maxItems and enforce model-specific collection limits at runtime.
+
+
 ## [v0.1.6](https://github.com/runapi-ai/mcp-core/releases/tag/v0.1.6) - 2026-07-16
 
 ### Changed

@@ -105,6 +105,8 @@ const RESERVED_DECLARED_FIELDS = new Set(["model"]);
 //     defines the field constrains it — if any model leaves it free-form, the
 //     field is advertised unconstrained. Otherwise the declared schema could
 //     reject a value valid for one model before its runtime check runs.
+//   - array item count: the loosest envelope across models for the advertised
+//     schema; selected-model runtime validation enforces the precise roster.
 //   - other constraints (type/min/max): first-seen, since canonical fields do
 //     not diverge on those.
 export function declaredFieldsForAction(action: ContractAction): Record<string, ContractField> {
@@ -136,6 +138,18 @@ export function declaredFieldsForAction(action: ContractAction): Record<string, 
     }
 
     field.required = rosters.every((roster) => fieldsForModel(action, roster)[name]?.required === true);
+    const minItems = rosters.map((roster) => fieldsForModel(action, roster)[name]?.min_items);
+    if (minItems.every((value): value is number => typeof value === "number")) {
+      field.min_items = Math.min(...minItems);
+    } else {
+      delete field.min_items;
+    }
+    const maxItems = rosters.map((roster) => fieldsForModel(action, roster)[name]?.max_items);
+    if (maxItems.every((value): value is number => typeof value === "number")) {
+      field.max_items = Math.max(...maxItems);
+    } else {
+      delete field.max_items;
+    }
     merged[name] = field;
   }
   return merged;
@@ -149,6 +163,8 @@ export function fieldSummary(fields: Record<string, ContractField>) {
     default: field.default,
     min: field.min ?? field.minimum,
     max: field.max ?? field.maximum,
+    min_items: field.min_items,
+    max_items: field.max_items,
     type: field.type
   }));
 }

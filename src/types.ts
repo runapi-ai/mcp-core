@@ -10,6 +10,11 @@ export type ContractField = {
   length?: boolean;
   type?: string;
   description?: string;
+  pattern?: string;
+  min_items?: number;
+  max_items?: number;
+  items?: ContractField;
+  properties?: Record<string, ContractField>;
 };
 
 export type ContractAction = {

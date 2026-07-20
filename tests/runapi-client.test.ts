@@ -73,6 +73,27 @@ describe("RunApiClient", () => {
     expect(fetchImpl).toHaveBeenCalledWith(new URL("https://runapi.ai/api/v1/flux_kontext/text_to_image"), expect.objectContaining({ method: "POST" }));
   });
 
+  it("rejects non-UUID task ids before sending an authenticated request", async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({ balance_cents: 100 }));
+    const client = new RunApiClient({ apiKey: "k", baseUrl: "https://runapi.ai" }, fetchImpl as any);
+
+    await expect(client.getTask("gemini-tts", "../../me/balance", "text_to_speech"))
+      .rejects.toThrow("taskId must be a canonical UUID");
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("uses a canonical task UUID as one encoded route segment", async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({ id: "550e8400-e29b-41d4-a716-446655440000" }));
+    const client = new RunApiClient({ apiKey: "k", baseUrl: "https://runapi.ai" }, fetchImpl as any);
+
+    await client.getTask("gemini-tts", "550e8400-e29b-41d4-a716-446655440000", "text_to_speech");
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      new URL("https://runapi.ai/api/v1/gemini_tts/text_to_speech/550e8400-e29b-41d4-a716-446655440000"),
+      expect.objectContaining({ method: "GET" })
+    );
+  });
+
   it("extracts task status and id from nested payloads", () => {
     expect(taskStatus({ data: { status: "COMPLETED" } })).toBe("completed");
     expect(taskIdFromResponse({ data: { task_id: "abc" } })).toBe("abc");

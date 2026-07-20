@@ -14,10 +14,10 @@ export const fixtureContract: Contract = {
         "seedream-test-quality": {
           aspect_ratio: { required: true, enum: ["1:1", "16:9"] },
           output_quality: { required: true, enum: ["basic", "high"] },
-          source_image_urls: { required: true, type: "array" }
+          source_image_urls: { required: true, type: "array", min_items: 1, max_items: 2 }
         },
         "seedream-test-resolution": {
-          source_image_urls: { required: true, type: "array" },
+          source_image_urls: { required: true, type: "array", min_items: 1, max_items: 3 },
           aspect_ratio: { enum: ["16:9", "9:16"] },
           output_count: { enum: [1, 2, 3, 4] },
           output_resolution: { enum: ["1k", "2k", "4k"] }

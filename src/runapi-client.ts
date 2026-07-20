@@ -13,6 +13,7 @@ type RunApiConfigSource = RunApiConfig | (() => RunApiConfig);
 
 const COMPLETED_STATUSES = new Set(["completed", "complete", "succeeded", "success", "finished"]);
 const FAILED_STATUSES = new Set(["failed", "error", "canceled", "cancelled", "timeout"]);
+const TASK_ID_PATTERN = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 
 export class RunApiClient {
   constructor(
@@ -53,7 +54,8 @@ export class RunApiClient {
 
   async getTask(service: string, taskId: string, action?: string) {
     const routeService = routeServiceSlug(service);
-    const path = action ? `/api/v1/${routeService}/${action}/${taskId}` : `/api/v1/${routeService}/${taskId}`;
+    const encodedTaskId = taskIdPathSegment(taskId);
+    const path = action ? `/api/v1/${routeService}/${action}/${encodedTaskId}` : `/api/v1/${routeService}/${encodedTaskId}`;
     return this.request<RunApiTaskResponse>("GET", path, {
       auth: true
     });
@@ -141,6 +143,14 @@ function nestedString(value: unknown, key: string): string | undefined {
 
 function routeServiceSlug(service: string): string {
   return service.replace(/-/g, "_");
+}
+
+function taskIdPathSegment(taskId: string): string {
+  if (!TASK_ID_PATTERN.test(taskId)) {
+    throw new TypeError("taskId must be a canonical UUID");
+  }
+
+  return encodeURIComponent(taskId);
 }
 
 function appendQuery(query: URLSearchParams, key: string, value: string | number | boolean | undefined) {

@@ -80,6 +80,29 @@ describe("createModelServer", () => {
     expect(tools.tools.map((t) => t.name).sort()).toEqual(["create_image", "create_lyrics", "create_music", "edit_image", "login"]);
   });
 
+  it("publishes array cardinality as JSON Schema without narrowing model-specific limits", async () => {
+    const { client, createTask } = mockClient();
+    mcpClient = await connect(client);
+    const listed = await mcpClient.listTools();
+    const tool = listed.tools.find((candidate) => candidate.name === "edit_image");
+    const field = (tool?.inputSchema.properties?.source_image_urls ?? {}) as Record<string, unknown>;
+
+    expect(field).toMatchObject({ type: "array", minItems: 1, maxItems: 3 });
+
+    const result = await mcpClient.callTool({
+      name: "edit_image",
+      arguments: {
+        model: "seedream-test-quality",
+        source_image_urls: ["a", "b", "c"],
+        aspect_ratio: "1:1",
+        output_quality: "high",
+        wait: false
+      }
+    });
+    expect(parseText(result).error).toContain("source_image_urls must contain between 1 and 2 items");
+    expect(createTask).not.toHaveBeenCalled();
+  });
+
   it("can opt out of auth tools", async () => {
     mcpClient = await connect(mockClient().client, { authTools: false });
     const tools = await mcpClient.listTools();
