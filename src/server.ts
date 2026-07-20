@@ -26,9 +26,9 @@ export type CreateModelServerOptions = {
   pricing: PricingConfig;
   inputRules: Record<string, InputRule[]>;
   tools: ModelServerTool[];
-  // Additive optional injection beyond the agreed API-696/697/698 field set:
+  // Additive optional injection beyond the base field set:
   // lets tests pass a mock and lets a per-model server pass a pre-configured
-  // client. API-698 does not need to supply these.
+  // client. Callers do not need to supply these.
   client?: RunApiClient;
   instructions?: string;
   authTools?: false | LoginDependencies;
