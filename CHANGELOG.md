@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.1.8](https://github.com/runapi-ai/mcp-core/releases/tag/v0.1.8) - 2026-07-22
+
+### Fixed
+- Enforce every matching generated input rule while requiring only shared controlling fields.
+
+
 ## [v0.1.7](https://github.com/runapi-ai/mcp-core/releases/tag/v0.1.7) - 2026-07-20
 
 ### Changed

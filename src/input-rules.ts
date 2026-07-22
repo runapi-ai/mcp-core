@@ -7,35 +7,46 @@ export function validateInputRules(rules: InputRule[], params: Record<string, un
     return undefined;
   }
 
-  const controllingFields = new Set(rules.flatMap((rule) => Object.keys(rule.when)));
+  const controllingFields = new Set(Object.keys(rules[0].when));
+  for (const rule of rules.slice(1)) {
+    for (const field of controllingFields) {
+      if (!(field in rule.when)) {
+        controllingFields.delete(field);
+      }
+    }
+  }
   for (const field of controllingFields) {
     if (!hasValue(params[field])) {
       return `${field} is required to choose a valid parameter shape.`;
     }
   }
 
-  const rule = rules.find((candidate) => Object.entries(candidate.when).every(([field, value]) => params[field] === value));
-  if (!rule) {
-    return undefined;
+  for (const rule of rules) {
+    const matches = Object.entries(rule.when).every(([field, value]) => params[field] === value);
+    if (!matches) {
+      continue;
+    }
+
+    const required = rule.required ?? [];
+    const forbidden = rule.forbidden ?? [];
+    const missing = required.filter((field) => !hasValue(params[field]));
+    const presentForbidden = forbidden.filter((field) => hasValue(params[field]));
+    if (missing.length === 0 && presentForbidden.length === 0) {
+      continue;
+    }
+
+    const parts = [];
+    if (missing.length > 0) {
+      parts.push(`requires ${missing.join(", ")}`);
+    }
+    if (presentForbidden.length > 0) {
+      parts.push(`must not include ${presentForbidden.join(", ")}`);
+    }
+
+    return `${formatWhen(rule.when)} ${parts.join(" and ")}.`;
   }
 
-  const required = rule.required ?? [];
-  const forbidden = rule.forbidden ?? [];
-  const missing = required.filter((field) => !hasValue(params[field]));
-  const presentForbidden = forbidden.filter((field) => hasValue(params[field]));
-  if (missing.length === 0 && presentForbidden.length === 0) {
-    return undefined;
-  }
-
-  const parts = [];
-  if (missing.length > 0) {
-    parts.push(`requires ${missing.join(", ")}`);
-  }
-  if (presentForbidden.length > 0) {
-    parts.push(`must not include ${presentForbidden.join(", ")}`);
-  }
-
-  return `${formatWhen(rule.when)} ${parts.join(" and ")}.`;
+  return undefined;
 }
 
 function hasValue(value: unknown): boolean {

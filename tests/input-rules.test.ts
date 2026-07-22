@@ -33,6 +33,20 @@ describe("validateInputRules (engine)", () => {
     expect(error).toBe("model=kling-v3-turbo-image-to-video must not include negative_prompt.");
   });
 
+  it("checks every matching layered rule without requiring optional condition fields", () => {
+    const layeredRules = [
+      { when: { model: "lite" }, forbidden: ["seed"] },
+      { when: { model: "lite", input_mode: "reference", duration_seconds: 4 }, forbidden: ["duration_seconds"] }
+    ];
+
+    expect(validateInputRules(layeredRules, { model: "lite" })).toBeUndefined();
+    expect(validateInputRules(layeredRules, {
+      model: "lite",
+      input_mode: "reference",
+      duration_seconds: 4
+    })).toBe("model=lite, input_mode=reference, duration_seconds=4 must not include duration_seconds.");
+  });
+
   it("passes when the matched rule is satisfied", () => {
     expect(validateInputRules(rules, { vocal_mode: "auto_lyrics", prompt: "a song" })).toBeUndefined();
   });
