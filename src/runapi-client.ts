@@ -2,6 +2,9 @@ import { USER_AGENT } from "./constants.js";
 import { loadConfig, requireApiKey, type RunApiConfig } from "./config.js";
 import type { PollingOptions, RunApiPromptsResponse, RunApiTaskResponse, SearchPromptsParams } from "./types.js";
 import { errorFromResponse, PollTimeoutError } from "./errors.js";
+import { taskStatus } from "./task.js";
+
+export { taskIdFromResponse, taskStatus } from "./task.js";
 
 type RequestOptions = {
   auth?: boolean;
@@ -120,25 +123,6 @@ export class RunApiClient {
   private config(): RunApiConfig {
     return typeof this.configSource === "function" ? this.configSource() : this.configSource;
   }
-}
-
-export function taskStatus(task?: RunApiTaskResponse): string {
-  const status = task?.status || task?.state || nestedString(task?.data, "status");
-  return typeof status === "string" ? status.toLowerCase() : "unknown";
-}
-
-export function taskIdFromResponse(task: RunApiTaskResponse): string | undefined {
-  const id = task.id || task.task_id || nestedString(task.data, "id") || nestedString(task.data, "task_id");
-  return typeof id === "string" && id.length > 0 ? id : undefined;
-}
-
-function nestedString(value: unknown, key: string): string | undefined {
-  if (!value || typeof value !== "object") {
-    return undefined;
-  }
-
-  const nested = (value as Record<string, unknown>)[key];
-  return typeof nested === "string" ? nested : undefined;
 }
 
 function routeServiceSlug(service: string): string {

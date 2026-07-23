@@ -16,11 +16,15 @@ export class PollTimeoutError extends Error {
   }
 }
 
-export function friendlyError(error: unknown): string {
+export type FriendlyErrorOptions = {
+  authentication?: string;
+};
+
+export function friendlyError(error: unknown, options: FriendlyErrorOptions = {}): string {
   if (error instanceof RunApiClientError) {
     switch (error.status) {
       case 401:
-        return "RunAPI rejected the API key. Call the login tool or run `runapi login`, then retry. Headless hosts can update RUNAPI_API_KEY or ~/.config/runapi/config.json.";
+        return options.authentication ?? "RunAPI rejected the API key. Call the login tool or run `runapi login`, then retry. Headless hosts can update RUNAPI_API_KEY or ~/.config/runapi/config.json.";
       case 402:
         return "The RunAPI account has insufficient credits. Add credits in the RunAPI dashboard, then retry.";
       case 429:

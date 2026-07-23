@@ -1,6 +1,18 @@
-import type { InputRule } from "./types.js";
+import { findAction } from "./contract.js";
+import type { Contract, InputRule, ModelInfo } from "./types.js";
 
 export type { InputRule } from "./types.js";
+
+export function inputRulesForModel(
+  info: Pick<ModelInfo, "service" | "action">,
+  contract: Contract
+): InputRule[] {
+  return (findAction(info.service, info.action, contract)?.rules ?? []).map((rule) => ({
+    ...rule,
+    required: rule.required ?? [],
+    forbidden: rule.forbidden ?? []
+  }));
+}
 
 export function validateInputRules(rules: InputRule[], params: Record<string, unknown>): string | undefined {
   if (rules.length === 0) {

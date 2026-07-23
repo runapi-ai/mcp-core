@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.2.0](https://github.com/runapi-ai/mcp-core/releases/tag/v0.2.0) - 2026-07-23
+
+### Added
+- Expose contract, pricing, validation, response, and task helpers without loading Local configuration or Login capabilities.
+
+
 ## [v0.1.8](https://github.com/runapi-ai/mcp-core/releases/tag/v0.1.8) - 2026-07-22
 
 ### Fixed

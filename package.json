@@ -1,10 +1,21 @@
 {
   "name": "@runapi.ai/mcp-core",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "description": "Reusable core for building RunAPI MCP servers: client, contract/pricing/schema queries, input-rule engine, and a createModelServer factory.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./web": {
+      "types": "./dist/web.d.ts",
+      "import": "./dist/web.js"
+    },
+    "./*": "./*"
+  },
   "files": [
     "dist",
     "README.md",
