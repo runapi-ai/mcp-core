@@ -68,9 +68,16 @@ describe("RunApiClient", () => {
   it("normalizes service slugs when creating tasks", async () => {
     const fetchImpl = vi.fn(async () => jsonResponse({ id: "task_1", status: "queued" }));
     await new RunApiClient({ apiKey: "k", baseUrl: "https://runapi.ai" }, fetchImpl as any)
-      .createTask("flux-kontext", "text_to_image", { prompt: "x" });
+      .createTask("flux-kontext", "text_to_image", { prompt: "x" }, "opaque-task-key");
 
-    expect(fetchImpl).toHaveBeenCalledWith(new URL("https://runapi.ai/api/v1/flux_kontext/text_to_image"), expect.objectContaining({ method: "POST" }));
+    expect(fetchImpl).toHaveBeenCalledWith(
+      new URL("https://runapi.ai/api/v1/flux_kontext/text_to_image"),
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({ "Idempotency-Key": "opaque-task-key" }),
+        body: JSON.stringify({ prompt: "x" })
+      })
+    );
   });
 
   it("rejects non-UUID task ids before sending an authenticated request", async () => {
@@ -79,6 +86,18 @@ describe("RunApiClient", () => {
 
     await expect(client.getTask("gemini-tts", "../../me/balance", "text_to_speech"))
       .rejects.toThrow("taskId must be a canonical UUID");
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("rejects unsafe task route segments before sending an authenticated request", async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({ balance_cents: 100 }));
+    const client = new RunApiClient({ apiKey: "k", baseUrl: "https://runapi.ai" }, fetchImpl as any);
+    const taskId = "550e8400-e29b-41d4-a716-446655440000";
+
+    await expect(client.createTask("../me", "balance", {}, "unsafe-service"))
+      .rejects.toThrow("service must be a valid route segment");
+    await expect(client.getTask("gemini-tts", taskId, "../../me/balance"))
+      .rejects.toThrow("action must be a valid route segment");
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 

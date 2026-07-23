@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.2.1](https://github.com/runapi-ai/mcp-core/releases/tag/v0.2.1) - 2026-07-23
+
+### Added
+- Let RunApiClient task creation calls send an optional caller-provided Idempotency-Key header without adding it to the JSON body.
+
+
 ## [v0.2.0](https://github.com/runapi-ai/mcp-core/releases/tag/v0.2.0) - 2026-07-23
 
 ### Added

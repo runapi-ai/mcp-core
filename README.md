@@ -103,6 +103,21 @@ export RUNAPI_API_KEY=your_key_here
 
 `RunApiClient` also accepts an injected config object and `fetch` implementation for tests or custom hosts.
 
+## Safe Task Creation
+
+Pass a caller-generated opaque idempotency key when creating a task. Generate one key per logical task and reuse it only when retrying the exact same request after an unknown result. The key is sent as the public `Idempotency-Key` request header and is not added to the JSON body.
+
+```ts
+const task = await client.createTask(
+  "example",
+  "text_to_image",
+  {model: "example-model", prompt: "A product photo"},
+  "opaque-logical-task-1"
+);
+```
+
+Do not derive the key from a JSON-RPC request ID or `X-Client-Request-Id`, and do not reuse it with different input.
+
 ## Package Design
 
 `@runapi.ai/mcp-core` does not read catalog or pricing files at runtime. Server packages pass their embedded contract and pricing JSON into the library, which keeps published MCP packages deterministic and easy to smoke test.

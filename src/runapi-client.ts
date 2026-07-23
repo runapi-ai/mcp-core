@@ -16,6 +16,7 @@ type RunApiConfigSource = RunApiConfig | (() => RunApiConfig);
 
 const COMPLETED_STATUSES = new Set(["completed", "complete", "succeeded", "success", "finished"]);
 const FAILED_STATUSES = new Set(["failed", "error", "canceled", "cancelled", "timeout"]);
+const ROUTE_SEGMENT_PATTERN = /^[A-Za-z0-9_-]+$/;
 const TASK_ID_PATTERN = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 
 export class RunApiClient {
@@ -48,17 +49,25 @@ export class RunApiClient {
     return this.request("GET", "/api/v1/me/balance", { auth: true });
   }
 
-  async createTask(service: string, action: string, params: Record<string, unknown>) {
-    return this.request<RunApiTaskResponse>("POST", `/api/v1/${routeServiceSlug(service)}/${action}`, {
+  async createTask(
+    service: string,
+    action: string,
+    params: Record<string, unknown>,
+    idempotencyKey?: string
+  ) {
+    return this.request<RunApiTaskResponse>("POST", `/api/v1/${routeServiceSlug(service)}/${routePathSegment(action, "action")}`, {
       auth: true,
-      body: params
+      body: params,
+      headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined
     });
   }
 
   async getTask(service: string, taskId: string, action?: string) {
     const routeService = routeServiceSlug(service);
     const encodedTaskId = taskIdPathSegment(taskId);
-    const path = action ? `/api/v1/${routeService}/${action}/${encodedTaskId}` : `/api/v1/${routeService}/${encodedTaskId}`;
+    const path = action
+      ? `/api/v1/${routeService}/${routePathSegment(action, "action")}/${encodedTaskId}`
+      : `/api/v1/${routeService}/${encodedTaskId}`;
     return this.request<RunApiTaskResponse>("GET", path, {
       auth: true
     });
@@ -126,7 +135,15 @@ export class RunApiClient {
 }
 
 function routeServiceSlug(service: string): string {
-  return service.replace(/-/g, "_");
+  return routePathSegment(service.replace(/-/g, "_"), "service");
+}
+
+function routePathSegment(value: string, name: "service" | "action"): string {
+  if (!ROUTE_SEGMENT_PATTERN.test(value)) {
+    throw new TypeError(`${name} must be a valid route segment`);
+  }
+
+  return value;
 }
 
 function taskIdPathSegment(taskId: string): string {
