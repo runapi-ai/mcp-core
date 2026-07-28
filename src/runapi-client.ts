@@ -7,7 +7,7 @@ import { taskStatus } from "./task.js";
 export { taskIdFromResponse, taskStatus } from "./task.js";
 
 type RequestOptions = {
-  auth?: boolean;
+  auth?: boolean | "optional";
   body?: unknown;
   headers?: Record<string, string>;
 };
@@ -47,6 +47,23 @@ export class RunApiClient {
 
   async balance() {
     return this.request("GET", "/api/v1/me/balance", { auth: true });
+  }
+
+  async listPriceSchedules(filters: PriceScheduleFilters = {}) {
+    const query = new URLSearchParams();
+    appendQuery(query, "service", filters.service);
+    appendQuery(query, "action", filters.action);
+    appendQuery(query, "model", filters.model);
+    const suffix = query.size > 0 ? `?${query.toString()}` : "";
+
+    return this.request<PriceSchedulesResponse>("GET", `/api/v1/price_schedules${suffix}`, { auth: "optional" });
+  }
+
+  async quotePrice(input: PriceQuoteInput) {
+    return this.request<PriceQuoteResponse>("POST", "/api/v1/price_quotes", {
+      auth: "optional",
+      body: input
+    });
   }
 
   async createTask(
@@ -108,7 +125,7 @@ export class RunApiClient {
       headers["content-type"] = "application/json";
     }
 
-    if (options.auth !== false) {
+    if (options.auth !== false && (options.auth !== "optional" || config.apiKey)) {
       headers.authorization = `Bearer ${requireApiKey(config)}`;
     }
 
@@ -133,6 +150,26 @@ export class RunApiClient {
     return typeof this.configSource === "function" ? this.configSource() : this.configSource;
   }
 }
+
+export type PriceScheduleFilters = {
+  service?: string;
+  action?: string;
+  model?: string;
+};
+
+export type PriceQuoteInput = Required<Pick<PriceScheduleFilters, "service" | "action">> & {
+  model?: string;
+  params?: Record<string, unknown>;
+};
+
+export type PriceSchedulesResponse = {
+  as_of: string;
+  price_schedules: Array<Record<string, unknown>>;
+};
+
+export type PriceQuoteResponse = {
+  price_quote: Record<string, unknown>;
+};
 
 function routeServiceSlug(service: string): string {
   return routePathSegment(service.replace(/-/g, "_"), "service");

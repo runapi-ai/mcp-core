@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.2.2](https://github.com/runapi-ai/mcp-core/releases/tag/v0.2.2) - 2026-07-28
+
+### Added
+- Add public Price Schedule and Price Quote clients with shared runtime lookup error handling for MCP package authors.
+
+
 ## [v0.2.1](https://github.com/runapi-ai/mcp-core/releases/tag/v0.2.1) - 2026-07-23
 
 ### Added

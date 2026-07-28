@@ -42,6 +42,39 @@ describe("RunApiClient", () => {
     }));
   });
 
+  it("reads public price schedules without a key and uses a key when one is available", async () => {
+    const anonymousFetch = vi.fn(async () => jsonResponse({as_of: "2026-07-23T00:00:00Z", price_schedules: []}));
+    await new RunApiClient({baseUrl: "https://runapi.ai"}, anonymousFetch as any).listPriceSchedules({
+      service: "suno",
+      action: "text_to_music"
+    });
+    expect(anonymousFetch).toHaveBeenCalledWith(
+      new URL("https://runapi.ai/api/v1/price_schedules?service=suno&action=text_to_music"),
+      expect.objectContaining({headers: expect.not.objectContaining({authorization: expect.any(String)})})
+    );
+
+    const authenticatedFetch = vi.fn(async () => jsonResponse({as_of: "2026-07-23T00:00:00Z", price_schedules: []}));
+    await new RunApiClient({apiKey: "pricing_key", baseUrl: "https://runapi.ai"}, authenticatedFetch as any).listPriceSchedules();
+    expect(authenticatedFetch).toHaveBeenCalledWith(expect.any(URL), expect.objectContaining({
+      headers: expect.objectContaining({authorization: "Bearer pricing_key"})
+    }));
+  });
+
+  it("quotes current pricing with optional authentication", async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({price_quote: {reservation_amount_cents: 12}}));
+    await new RunApiClient({baseUrl: "https://runapi.ai"}, fetchImpl as any).quotePrice({
+      service: "suno",
+      action: "text_to_music",
+      model: "suno-v4",
+      params: {duration: 30}
+    });
+
+    expect(fetchImpl).toHaveBeenCalledWith(new URL("https://runapi.ai/api/v1/price_quotes"), expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify({service: "suno", action: "text_to_music", model: "suno-v4", params: {duration: 30}})
+    }));
+  });
+
   it("reloads the default config for authenticated requests", async () => {
     const originalHome = process.env.HOME;
     const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), "runapi-client-home-"));
