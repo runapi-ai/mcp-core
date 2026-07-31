@@ -31,28 +31,6 @@ export type Contract = {
   actions: Record<string, ContractAction>;
 };
 
-// Final customer-facing pricing embedded in published packages: prices are
-// already cost × markup, keyed neutrally by `${model}/${endpoint}` with no
-// provider or markup decomposition.
-export type PricingConfig = {
-  endpoints?: Record<string, PricingEndpoint>;
-};
-
-export type PricingEndpoint = {
-  unit_price_cents?: number;
-  input_price_per_1m_cents?: number;
-  output_price_per_1m_cents?: number;
-  cache_read_price_per_1m_cents?: number;
-  cache_write_5m_price_per_1m_cents?: number;
-  cache_write_1h_price_per_1m_cents?: number;
-  billing_config?: {
-    key?: string;
-    keys?: string[];
-    overrides?: Record<string, number>;
-    matrix?: Record<string, unknown>;
-  };
-};
-
 export type ModelInfo = {
   service: string;
   action: string;

@@ -10,7 +10,10 @@ type RequestOptions = {
   auth?: boolean | "optional";
   body?: unknown;
   headers?: Record<string, string>;
+  signal?: AbortSignal;
 };
+
+export type RequestSignalOptions = Pick<RequestOptions, "signal">;
 
 type RunApiConfigSource = RunApiConfig | (() => RunApiConfig);
 
@@ -49,20 +52,24 @@ export class RunApiClient {
     return this.request("GET", "/api/v1/me/balance", { auth: true });
   }
 
-  async listPriceSchedules(filters: PriceScheduleFilters = {}) {
+  async listPriceSchedules(filters: PriceScheduleFilters = {}, options: RequestSignalOptions = {}) {
     const query = new URLSearchParams();
-    appendQuery(query, "service", filters.service);
+    appendQuery(query, "service", filters.service?.replace(/-/g, "_"));
     appendQuery(query, "action", filters.action);
     appendQuery(query, "model", filters.model);
     const suffix = query.size > 0 ? `?${query.toString()}` : "";
 
-    return this.request<PriceSchedulesResponse>("GET", `/api/v1/price_schedules${suffix}`, { auth: "optional" });
+    return this.request<PriceSchedulesResponse>("GET", `/api/v1/price_schedules${suffix}`, {
+      auth: "optional",
+      signal: options.signal
+    });
   }
 
-  async quotePrice(input: PriceQuoteInput) {
+  async quotePrice(input: PriceQuoteInput, options: RequestSignalOptions = {}) {
     return this.request<PriceQuoteResponse>("POST", "/api/v1/price_quotes", {
       auth: "optional",
-      body: input
+      body: input,
+      signal: options.signal
     });
   }
 
@@ -132,7 +139,8 @@ export class RunApiClient {
     const response = await this.fetchImpl(url, {
       method,
       headers,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body)
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      signal: options.signal
     });
 
     if (!response.ok) {

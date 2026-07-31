@@ -1,4 +1,4 @@
-import type { Contract, InputRule, PricingConfig } from "../src/types.js";
+import type { Contract, InputRule } from "../src/types.js";
 
 export const fixtureContract: Contract = {
   catalog_models: ["flux-test-pro", "suno-test", "seedream-test-quality", "seedream-test-resolution"],
@@ -60,17 +60,6 @@ export const fixtureContract: Contract = {
         }
       }
     }
-  }
-};
-
-// Final embedded shape shipped in packages: neutral keys, final customer prices.
-// No-model endpoints are keyed under the "_" sentinel.
-export const fixturePricing: PricingConfig = {
-  endpoints: {
-    "flux-test-pro/text_to_image": { unit_price_cents: 10 },
-    "seedream-test-quality/edit_image": { unit_price_cents: 20 },
-    "seedream-test-resolution/edit_image": { unit_price_cents: 25 },
-    "_/generate_lyrics": { unit_price_cents: 1 }
   }
 };
 

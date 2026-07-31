@@ -3,7 +3,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createModelServer, type ModelServerTool } from "../src/server.js";
 import type { RunApiClient } from "../src/runapi-client.js";
-import { fixtureContract, fixturePricing, sunoInputRules } from "./fixtures.js";
+import { fixtureContract, sunoInputRules } from "./fixtures.js";
 
 const tools: ModelServerTool[] = [
   {
@@ -48,7 +48,6 @@ async function connect(client: RunApiClient, options: { authTools?: false } = {}
     version: "1.2.3",
     lineSlug: "flux-test",
     contract: fixtureContract,
-    pricing: fixturePricing,
     inputRules: sunoInputRules,
     tools,
     client,
@@ -109,7 +108,7 @@ describe("createModelServer", () => {
     expect(tools.tools.map((t) => t.name).sort()).toEqual(["create_image", "create_lyrics", "create_music", "edit_image"]);
   });
 
-  it("validates, creates a task via the injected client, and returns a price snapshot", async () => {
+  it("validates and creates a task without attaching pricing data", async () => {
     const { client, createTask } = mockClient();
     mcpClient = await connect(client);
 
@@ -118,10 +117,10 @@ describe("createModelServer", () => {
 
     expect(createTask).toHaveBeenCalledWith("flux-test", "text_to_image", { prompt: "a cat", model: "flux-test-pro" });
     expect(payload).toMatchObject({ task_id: "task_1", status: "queued" });
-    expect(payload.price.pricing).toMatchObject({ unit_price_cents: 10 });
+    expect(payload.price).toBeUndefined();
   });
 
-  it("creates a no-model task without a model in the body and prices via the \"_\" key", async () => {
+  it("creates a no-model task without a model in the body", async () => {
     const { client, createTask } = mockClient();
     mcpClient = await connect(client);
 
@@ -131,7 +130,7 @@ describe("createModelServer", () => {
     expect(createTask).toHaveBeenCalledWith("suno-test", "generate_lyrics", { prompt: "a ballad" });
     expect(payload.error).toBeUndefined();
     expect(payload).toMatchObject({ task_id: "task_1", status: "queued" });
-    expect(payload.price.pricing).toMatchObject({ unit_price_cents: 1 });
+    expect(payload.price).toBeUndefined();
   });
 
   it("accepts a request that omits a field only its sibling model requires", async () => {

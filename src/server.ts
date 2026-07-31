@@ -1,8 +1,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { Contract, ContractField, InputRule, PricingConfig, RunApiTaskResponse } from "./types.js";
+import type { Contract, ContractField, InputRule, RunApiTaskResponse } from "./types.js";
 import { declaredFieldsForAction, findAction, findModelForAction } from "./contract.js";
-import { priceForModel } from "./pricing.js";
 import { validateInputRules } from "./input-rules.js";
 import { validateParams, zodShapeForFields } from "./schema.js";
 import { RunApiClient, taskIdFromResponse, taskStatus } from "./runapi-client.js";
@@ -23,7 +22,6 @@ export type CreateModelServerOptions = {
   version: string;
   lineSlug: string;
   contract: Contract;
-  pricing: PricingConfig;
   inputRules: Record<string, InputRule[]>;
   tools: ModelServerTool[];
   // Additive optional injection beyond the base field set:
@@ -39,7 +37,7 @@ export type CreateModelServerOptions = {
 // service/action, validating params against the tool's inputSchema and the
 // endpoint's cross-field input rules.
 export function createModelServer(options: CreateModelServerOptions): McpServer {
-  const { name, version, lineSlug, contract, pricing, inputRules, tools, client = new RunApiClient() } = options;
+  const { name, version, lineSlug, contract, inputRules, tools, client = new RunApiClient() } = options;
 
   const server = new McpServer(
     {
@@ -98,7 +96,6 @@ export function createModelServer(options: CreateModelServerOptions): McpServer 
           });
         }
 
-        const price = priceForModel(info, pricing);
         const created = await client.createTask(tool.service, tool.action, body);
         const taskId = taskIdFromResponse(created);
 
@@ -106,8 +103,7 @@ export function createModelServer(options: CreateModelServerOptions): McpServer 
           return jsonText({
             created,
             task_id: taskId,
-            status: taskStatus(created),
-            price
+            status: taskStatus(created)
           });
         }
 
@@ -131,10 +127,9 @@ export function createModelServer(options: CreateModelServerOptions): McpServer 
         });
 
         return jsonText({
-          task_id: taskId,
-          status: taskStatus(completed),
-          result: completed,
-          price
+            task_id: taskId,
+            status: taskStatus(completed),
+            result: completed
         });
       } catch (error) {
         return jsonText({ error: friendlyError(error) });

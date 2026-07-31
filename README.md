@@ -2,7 +2,7 @@
 
 Reusable TypeScript primitives for building RunAPI Model Context Protocol servers.
 
-`@runapi.ai/mcp-core` is the shared library used by the aggregate RunAPI MCP server and the per-model-line MCP servers. It provides the RunAPI HTTP client, contract helpers, pricing lookup, input validation, tool response helpers, and `createModelServer` for turning embedded RunAPI catalog data into MCP tools.
+`@runapi.ai/mcp-core` is the shared library used by the aggregate RunAPI MCP server and the per-model-line MCP servers. It provides the RunAPI HTTP client, contract helpers, runtime pricing lookup, input validation, tool response helpers, and `createModelServer` for turning embedded RunAPI catalog data into MCP tools.
 
 This package is a library. If you want a ready-to-run MCP server, use one of these packages instead:
 
@@ -22,9 +22,9 @@ Node.js 22 or newer is required.
 | Export area | Purpose |
 |---|---|
 | `RunApiClient` | Create tasks, fetch tasks, poll tasks, list models, search prompts, and check balance through the RunAPI API. |
-| `createModelServer` | Build an MCP server from embedded contract, pricing, and tool metadata. |
+| `createModelServer` | Build an MCP server from embedded contract and tool metadata. |
 | Contract helpers | Resolve actions, models, fields, declared tool schemas, and action groups. |
-| Pricing helpers | Look up embedded final pricing snapshots for a model/action pair. |
+| Runtime pricing helpers | Look up the current Price Schedule or request a Price Quote. |
 | Schema helpers | Convert RunAPI contract fields into Zod shapes and validate request params. |
 | Input rules | Validate endpoint-level cross-field requirements before creating a task. |
 | Response helpers | Format JSON MCP tool responses and friendly errors. |
@@ -36,7 +36,6 @@ import {
   RunApiClient,
   createModelServer,
   type Contract,
-  type PricingConfig,
   type ModelServerTool
 } from "@runapi.ai/mcp-core";
 
@@ -60,10 +59,6 @@ const contract: Contract = {
   }
 };
 
-const pricing: PricingConfig = {
-  endpoints: {}
-};
-
 const tools: ModelServerTool[] = [
   {
     name: "text_to_image",
@@ -79,7 +74,6 @@ const server = createModelServer({
   version: "0.1.0",
   lineSlug: "example",
   contract,
-  pricing,
   inputRules: {},
   tools,
   client: new RunApiClient()
@@ -120,7 +114,7 @@ Do not derive the key from a JSON-RPC request ID or `X-Client-Request-Id`, and d
 
 ## Package Design
 
-`@runapi.ai/mcp-core` does not read catalog or pricing files at runtime. Server packages pass their embedded contract and pricing JSON into the library, which keeps published MCP packages deterministic and easy to smoke test.
+`@runapi.ai/mcp-core` does not read catalog or pricing files at runtime. Server packages pass their embedded Input Contract into the library; pricing is resolved from the current RunAPI Price Schedule.
 
 The package is ESM-only and ships TypeScript declarations.
 

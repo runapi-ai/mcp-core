@@ -1,6 +1,7 @@
 import type { PriceQuoteInput, PriceScheduleFilters, RunApiClient } from "./runapi-client.js";
 
 export const CANONICAL_PRICING_URL = "https://runapi.ai/pricing";
+export const RUNTIME_PRICING_TIMEOUT_MS = 10_000;
 
 export type RuntimePricingClient = Pick<RunApiClient, "listPriceSchedules" | "quotePrice">;
 
@@ -16,8 +17,14 @@ export async function lookupRuntimePrice(
   filters: Required<Pick<PriceScheduleFilters, "service" | "action">> & PriceScheduleFilters
 ) {
   try {
-    const response = await client.listPriceSchedules(filters);
-    const priceSchedule = response.price_schedules.find((schedule) => matches(schedule, filters));
+    const resolvedFilters = {
+      ...filters,
+      service: filters.service?.replace(/-/g, "_")
+    };
+    const response = await withRuntimePricingTimeout((signal) =>
+      client.listPriceSchedules(resolvedFilters, { signal })
+    );
+    const priceSchedule = response.price_schedules.find((schedule) => matches(schedule, resolvedFilters));
     if (!priceSchedule) {
       throw new RuntimePricingLookupError("No current price schedule is available for this RunAPI model/action.");
     }
@@ -31,10 +38,32 @@ export async function lookupRuntimePrice(
 
 export async function quoteRuntimePrice(client: Pick<RuntimePricingClient, "quotePrice">, input: PriceQuoteInput) {
   try {
-    return await client.quotePrice(input);
+    return await withRuntimePricingTimeout((signal) => client.quotePrice(input, { signal }));
   } catch (error) {
     throw new RuntimePricingLookupError("Runtime pricing quote is unavailable.", error);
   }
+}
+
+function withRuntimePricingTimeout<T>(request: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  const controller = new AbortController();
+
+  return new Promise<T>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      controller.abort();
+      reject(new Error("Runtime pricing request timed out."));
+    }, RUNTIME_PRICING_TIMEOUT_MS);
+
+    request(controller.signal).then(
+      (result) => {
+        clearTimeout(timeout);
+        resolve(result);
+      },
+      (error) => {
+        clearTimeout(timeout);
+        reject(error);
+      }
+    );
+  });
 }
 
 export function runtimePricingErrorMessage(_error: unknown): string {

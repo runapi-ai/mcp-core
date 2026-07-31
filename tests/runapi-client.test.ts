@@ -60,6 +60,29 @@ describe("RunApiClient", () => {
     }));
   });
 
+  it("forwards a cancellation signal to runtime pricing requests", async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({as_of: "2026-07-23T00:00:00Z", price_schedules: []}));
+    const controller = new AbortController();
+
+    await new RunApiClient({baseUrl: "https://runapi.ai"}, fetchImpl as any)
+      .listPriceSchedules({}, {signal: controller.signal});
+
+    expect(fetchImpl).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({signal: controller.signal}));
+  });
+
+  it("normalizes model-line service slugs for public price schedules", async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({as_of: "2026-07-23T00:00:00Z", price_schedules: []}));
+    await new RunApiClient({baseUrl: "https://runapi.ai"}, fetchImpl as any).listPriceSchedules({
+      service: "flux-2",
+      action: "text_to_image"
+    });
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      new URL("https://runapi.ai/api/v1/price_schedules?service=flux_2&action=text_to_image"),
+      expect.anything()
+    );
+  });
+
   it("quotes current pricing with optional authentication", async () => {
     const fetchImpl = vi.fn(async () => jsonResponse({price_quote: {reservation_amount_cents: 12}}));
     await new RunApiClient({baseUrl: "https://runapi.ai"}, fetchImpl as any).quotePrice({

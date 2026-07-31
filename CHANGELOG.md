@@ -1,5 +1,14 @@
 # Changelog
 
+## [v0.2.3](https://github.com/runapi-ai/mcp-core/releases/tag/v0.2.3) - 2026-07-31
+
+### Changed
+- Resolve MCP prices from the RunAPI Price Schedule API instead of embedded package data.
+
+### Fixed
+- Return the documented pricing-unavailable result when a runtime pricing request does not respond.
+
+
 ## [v0.2.2](https://github.com/runapi-ai/mcp-core/releases/tag/v0.2.2) - 2026-07-28
 
 ### Added
