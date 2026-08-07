@@ -50,4 +50,47 @@ describe("validateInputRules (engine)", () => {
   it("passes when the matched rule is satisfied", () => {
     expect(validateInputRules(rules, { vocal_mode: "auto_lyrics", prompt: "a song" })).toBeUndefined();
   });
+
+  it("supports unconditional required-any rules", () => {
+    const unconditional = [{ required_any: ["first_frame_image_url", "last_frame_image_url"] }];
+
+    expect(validateInputRules(unconditional, {})).toBe(
+      "requires one of first_frame_image_url, last_frame_image_url."
+    );
+    expect(validateInputRules(unconditional, { last_frame_image_url: "https://cdn.runapi.ai/last.png" })).toBeUndefined();
+  });
+
+  it("supports presence conditions and narrowed enums", () => {
+    const conditional = [{
+      when: { reference_image_urls: { present: false }, reference_video_urls: { present: false } },
+      required: ["aspect_ratio"],
+      enum: { aspect_ratio: ["16:9", "1:1"] }
+    }];
+
+    expect(validateInputRules(conditional, {})).toBe(
+      "reference_image_urls is absent, reference_video_urls is absent requires aspect_ratio."
+    );
+    expect(validateInputRules(conditional, { aspect_ratio: "adaptive" })).toBe(
+      "reference_image_urls is absent, reference_video_urls is absent requires aspect_ratio to be one of 16:9, 1:1."
+    );
+    expect(validateInputRules(conditional, { reference_image_urls: ["https://cdn.runapi.ai/ref.png"] })).toBeUndefined();
+  });
+
+  it("treats an empty array as absent", () => {
+    const conditional = [{
+      when: { reference_image_urls: { present: false } },
+      required: ["aspect_ratio"]
+    }];
+
+    // [] supplies nothing, so the absent branch still applies.
+    expect(validateInputRules(conditional, { reference_image_urls: [] })).toBe(
+      "reference_image_urls is absent requires aspect_ratio."
+    );
+
+    // And a forbidden array field is not "included" by an empty array.
+    expect(validateInputRules(
+      [{ when: { model: "kling-3.0" }, forbidden: ["reference_image_urls"] }],
+      { model: "kling-3.0", reference_image_urls: [] }
+    )).toBeUndefined();
+  });
 });

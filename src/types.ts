@@ -105,8 +105,10 @@ export type PollingOptions = {
 };
 
 export type InputRule = {
-  when: Record<string, unknown>;
+  when?: Record<string, unknown>;
   required?: string[];
+  required_any?: string[];
   forbidden?: string[];
+  enum?: Record<string, unknown[]>;
   description?: string;
 };

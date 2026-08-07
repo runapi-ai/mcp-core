@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.3.0](https://github.com/runapi-ai/mcp-core/releases/tag/v0.3.0) - 2026-08-07
+
+### Added
+- Validate presence conditions, required-any fields, and conditional enum constraints from RunAPI contracts.
+
+
 ## [v0.2.3](https://github.com/runapi-ai/mcp-core/releases/tag/v0.2.3) - 2026-07-31
 
 ### Changed
