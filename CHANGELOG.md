@@ -1,5 +1,12 @@
 # Changelog
 
+## [v0.4.0](https://github.com/runapi-ai/mcp-core/releases/tag/v0.4.0) - 2026-08-14
+
+### Removed
+- Remove the aggregate catalog_models field from the shared MCP contract types.
+  Migration: Discover aggregate models through actions[].models and resolve their fields through fields_by_model.
+
+
 ## [v0.3.0](https://github.com/runapi-ai/mcp-core/releases/tag/v0.3.0) - 2026-08-07
 
 ### Added

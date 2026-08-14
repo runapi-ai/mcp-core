@@ -1,7 +1,6 @@
 import type { Contract, InputRule } from "../src/types.js";
 
 export const fixtureContract: Contract = {
-  catalog_models: ["flux-test-pro", "suno-test", "seedream-test-quality", "seedream-test-resolution"],
   actions: {
     // Divergent-required fixture: one model requires aspect_ratio + output_quality,
     // the other requires only source_image_urls (the rest optional). Exercises

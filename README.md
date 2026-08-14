@@ -40,7 +40,6 @@ import {
 } from "@runapi.ai/mcp-core";
 
 const contract: Contract = {
-  catalog_models: ["example-model"],
   actions: {
     "example/text_to_image": {
       model: "example",

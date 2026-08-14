@@ -27,7 +27,6 @@ export type ContractAction = {
 };
 
 export type Contract = {
-  catalog_models: string[];
   actions: Record<string, ContractAction>;
 };
 
