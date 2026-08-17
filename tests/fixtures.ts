@@ -54,7 +54,7 @@ export const fixtureContract: Contract = {
       models: [],
       fields_by_model: {
         "_": {
-          prompt: { type: "string", description: "Lyrics generation prompt." },
+          prompt: { type: "string", length: true, max: 2, description: "Lyrics generation prompt." },
           callback_url: { type: "string", description: "Webhook URL for async notifications." }
         }
       }

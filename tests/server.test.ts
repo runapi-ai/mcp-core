@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { zodShapeForFields } from "../src/schema.js";
 import { createModelServer, type ModelServerTool } from "../src/server.js";
 import type { RunApiClient } from "../src/runapi-client.js";
 import { fixtureContract, sunoInputRules } from "./fixtures.js";
@@ -124,13 +126,45 @@ describe("createModelServer", () => {
     const { client, createTask } = mockClient();
     mcpClient = await connect(client);
 
-    const result = await mcpClient.callTool({ name: "create_lyrics", arguments: { prompt: "a ballad", wait: false } });
+    const result = await mcpClient.callTool({ name: "create_lyrics", arguments: { prompt: "ok", wait: false } });
     const payload = parseText(result);
 
-    expect(createTask).toHaveBeenCalledWith("suno-test", "generate_lyrics", { prompt: "a ballad" });
+    expect(createTask).toHaveBeenCalledWith("suno-test", "generate_lyrics", { prompt: "ok" });
     expect(payload.error).toBeUndefined();
     expect(payload).toMatchObject({ task_id: "task_1", status: "queued" });
     expect(payload.price).toBeUndefined();
+  });
+
+  it("publishes code-point string limits and accepts astral characters within them", async () => {
+    const { client, createTask } = mockClient();
+    mcpClient = await connect(client);
+    const listed = await mcpClient.listTools();
+    const tool = listed.tools.find((candidate) => candidate.name === "create_lyrics");
+    const field = (tool?.inputSchema.properties?.prompt ?? {}) as Record<string, unknown>;
+
+    expect(field).toMatchObject({ type: "string", maxLength: 2 });
+
+    const result = await mcpClient.callTool({
+      name: "create_lyrics",
+      arguments: { prompt: "😀😀", wait: false }
+    });
+    expect(parseText(result).error).toBeUndefined();
+    expect(createTask).toHaveBeenCalledWith("suno-test", "generate_lyrics", { prompt: "😀😀" });
+  });
+
+  it("preserves JSON Schema length metadata for the public Zod 3 shape builder", async () => {
+    const server = new McpServer({ name: "legacy-shape-test", version: "0.0.0" });
+    server.tool(
+      "legacy_shape",
+      zodShapeForFields({ prompt: { type: "string", length: true, max: 2 } }),
+      async () => ({ content: [{ type: "text" as const, text: "ok" }] })
+    );
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    mcpClient = new Client({ name: "test", version: "0.0.0" });
+    await Promise.all([server.connect(serverTransport), mcpClient.connect(clientTransport)]);
+
+    const listed = await mcpClient.listTools();
+    expect(listed.tools[0]?.inputSchema.properties?.prompt).toMatchObject({ type: "string", maxLength: 2 });
   });
 
   it("accepts a request that omits a field only its sibling model requires", async () => {

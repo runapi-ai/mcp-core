@@ -1,9 +1,9 @@
-import { z } from "zod";
+import { z } from "zod/v4";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Contract, ContractField, InputRule, RunApiTaskResponse } from "./types.js";
 import { declaredFieldsForAction, findAction, findModelForAction } from "./contract.js";
 import { validateInputRules } from "./input-rules.js";
-import { validateParams, zodShapeForFields } from "./schema.js";
+import { mcpZodShapeForFields, validateParams } from "./schema.js";
 import { RunApiClient, taskIdFromResponse, taskStatus } from "./runapi-client.js";
 import { friendlyError } from "./errors.js";
 import { jsonText } from "./tool-response.js";
@@ -140,9 +140,9 @@ export function createModelServer(options: CreateModelServerOptions): McpServer 
   return server;
 }
 
-function toolShape(fields: Record<string, ContractField>, models: string[]): Record<string, z.ZodTypeAny> {
-  const shape: Record<string, z.ZodTypeAny> = {
-    ...zodShapeForFields(fields),
+function toolShape(fields: Record<string, ContractField>, models: string[]): Record<string, z.ZodType<any, any>> {
+  const shape: Record<string, z.ZodType<any, any>> = {
+    ...mcpZodShapeForFields(fields),
     wait: z.boolean().default(true).describe("Poll until the task reaches a terminal status."),
     timeout_ms: z.number().int().positive().optional(),
     poll_interval_ms: z.number().int().positive().optional()

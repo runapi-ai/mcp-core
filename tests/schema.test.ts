@@ -42,6 +42,15 @@ describe("schema", () => {
     expect(validateParams(lengthFields, { headline: "ok", caption: "fine" })).toMatchObject({ headline: "ok" });
   });
 
+  it("counts string length in Unicode code points", () => {
+    const lengthFields: Record<string, ContractField> = {
+      prompt: { type: "string", length: true, max: 2, required: true }
+    };
+
+    expect(validateParams(lengthFields, { prompt: "😀😀" })).toMatchObject({ prompt: "😀😀" });
+    expect(() => validateParams(lengthFields, { prompt: "😀😀😀" })).toThrow("prompt must be at most 2 characters");
+  });
+
   it("exposes a reusable zod shape builder", () => {
     const shape = zodShapeForFields(fields);
     expect(Object.keys(shape).sort()).toEqual(["mode", "prompt", "steps"]);
