@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.4.2](https://github.com/runapi-ai/mcp-core/releases/tag/v0.4.2) - 2026-08-21
+
+### Fixed
+- Count Unicode code points when enforcing RunAPI string-length constraints.
+
+
 ## [v0.4.1](https://github.com/runapi-ai/mcp-core/releases/tag/v0.4.1) - 2026-08-17
 
 ### Fixed
