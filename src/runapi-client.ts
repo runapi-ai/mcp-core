@@ -79,11 +79,32 @@ export class RunApiClient {
     params: Record<string, unknown>,
     idempotencyKey?: string
   ) {
-    return this.request<RunApiTaskResponse>("POST", `/api/v1/${routeServiceSlug(service)}/${routePathSegment(action, "action")}`, {
+    const response = await this.createTaskResponse(service, action, params, idempotencyKey);
+    return this.responseJson<RunApiTaskResponse>(response);
+  }
+
+  async createTaskResponse(
+    service: string,
+    action: string,
+    params: Record<string, unknown>,
+    idempotencyKey?: string
+  ) {
+    return this.requestResponse("POST", `/api/v1/${routeServiceSlug(service)}/${routePathSegment(action, "action")}`, {
       auth: true,
       body: params,
       headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined
     });
+  }
+
+  async getTaskResultResponse(location: string, options: RequestSignalOptions = {}) {
+    const config = this.config();
+    const baseUrl = new URL(config.baseUrl);
+    const resultUrl = new URL(location, baseUrl);
+    if (resultUrl.origin !== baseUrl.origin) {
+      throw new Error("RunAPI Task Result Location was invalid");
+    }
+
+    return this.requestResponse("GET", resultUrl, {auth: true, signal: options.signal});
   }
 
   async getTask(service: string, taskId: string, action?: string) {
@@ -120,8 +141,12 @@ export class RunApiClient {
   }
 
   private async request<T = unknown>(method: string, requestPath: string, options: RequestOptions = {}): Promise<T> {
+    return this.responseJson<T>(await this.requestResponse(method, requestPath, options));
+  }
+
+  private async requestResponse(method: string, requestPath: string | URL, options: RequestOptions = {}): Promise<Response> {
     const config = this.config();
-    const url = new URL(requestPath, config.baseUrl.replace(/\/+$/, ""));
+    const url = requestPath instanceof URL ? requestPath : new URL(requestPath, config.baseUrl.replace(/\/+$/, ""));
     const headers: Record<string, string> = {
       accept: "application/json",
       "user-agent": this.userAgent,
@@ -147,6 +172,10 @@ export class RunApiClient {
       throw await errorFromResponse(response);
     }
 
+    return response;
+  }
+
+  private async responseJson<T>(response: Response): Promise<T> {
     if (response.status === 204) {
       return undefined as T;
     }

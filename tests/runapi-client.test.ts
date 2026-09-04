@@ -169,6 +169,21 @@ describe("RunApiClient", () => {
     );
   });
 
+  it("follows only same-origin Task Result locations", async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({id: "task_1", status: "processing"}));
+    const client = new RunApiClient({apiKey: "k", baseUrl: "https://runapi.ai"}, fetchImpl as any);
+
+    await client.getTaskResultResponse("/api/v1/tasks/task_1");
+    expect(fetchImpl).toHaveBeenCalledWith(
+      new URL("https://runapi.ai/api/v1/tasks/task_1"),
+      expect.objectContaining({headers: expect.objectContaining({authorization: "Bearer k"})})
+    );
+
+    await expect(client.getTaskResultResponse("https://attacker.example/tasks/task_1"))
+      .rejects.toThrow("Task Result Location was invalid");
+    expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
   it("extracts task status and id from nested payloads", () => {
     expect(taskStatus({ data: { status: "COMPLETED" } })).toBe("completed");
     expect(taskIdFromResponse({ data: { task_id: "abc" } })).toBe("abc");
