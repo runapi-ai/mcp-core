@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.4.3](https://github.com/runapi-ai/mcp-core/releases/tag/v0.4.3) - 2026-09-04
+
+### Changed
+- Add the generated hybrid lifecycle operation marker to the public MCP contract type.
+
+
 ## [v0.4.2](https://github.com/runapi-ai/mcp-core/releases/tag/v0.4.2) - 2026-08-21
 
 ### Fixed
