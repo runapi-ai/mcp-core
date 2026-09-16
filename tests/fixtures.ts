@@ -58,6 +58,19 @@ export const fixtureContract: Contract = {
           callback_url: { type: "string", description: "Webhook URL for async notifications." }
         }
       }
+    },
+    // Provider-neutral resource: published on its own route rather than under
+    // the model line's service slug.
+    "suno-test/music-visualizations": {
+      model: "Suno Test",
+      endpoint: "visualize_music",
+      path: "/api/v1/music_visualizations",
+      models: [],
+      fields_by_model: {
+        "_": {
+          source_audio_id: { required: true, type: "string", description: "Audio id to visualize." }
+        }
+      }
     }
   }
 };

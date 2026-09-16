@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.4.4](https://github.com/runapi-ai/mcp-core/releases/tag/v0.4.4) - 2026-09-16
+
+### Added
+- Let a model server route a tool's create and status calls to the action's published public path, so a capability that lives outside its model line is addressed correctly.
+
+
 ## [v0.4.3](https://github.com/runapi-ai/mcp-core/releases/tag/v0.4.3) - 2026-09-04
 
 ### Changed

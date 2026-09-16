@@ -22,6 +22,9 @@ export type ContractAction = {
   endpoint: string;
   models: string[];
   task_type?: "synchronous" | "asynchronous";
+  // The action's public route when it is not `/api/v1/<service>/<endpoint>` —
+  // a provider-neutral resource is published at the API root instead.
+  path?: string;
   // Endpoint-level cross-field rules (ADR-0010), a sibling of fields_by_model.
   rules?: InputRule[];
   fields_by_model: Record<string, Record<string, ContractField>>;
@@ -102,6 +105,13 @@ export type PollingOptions = {
   timeoutMs?: number;
   intervalMs?: number;
   onProgress?: (task: RunApiTaskResponse) => Promise<void> | void;
+};
+
+// Context for looking up one task: the action's public route when the contract
+// publishes one, and the caller's cancellation signal.
+export type TaskLookupOptions = {
+  route?: string;
+  signal?: AbortSignal;
 };
 
 export type InputRule = {

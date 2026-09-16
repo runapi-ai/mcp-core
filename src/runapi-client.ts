@@ -1,7 +1,8 @@
 import { USER_AGENT } from "./constants.js";
 import { loadConfig, requireApiKey, type RunApiConfig } from "./config.js";
-import type { PollingOptions, RunApiPromptsResponse, RunApiTaskResponse, SearchPromptsParams } from "./types.js";
+import type { PollingOptions, RunApiPromptsResponse, RunApiTaskResponse, SearchPromptsParams, TaskLookupOptions } from "./types.js";
 import { errorFromResponse, PollTimeoutError } from "./errors.js";
+import { actionRoutePath } from "./contract.js";
 import { taskStatus } from "./task.js";
 
 export { taskIdFromResponse, taskStatus } from "./task.js";
@@ -77,9 +78,10 @@ export class RunApiClient {
     service: string,
     action: string,
     params: Record<string, unknown>,
-    idempotencyKey?: string
+    idempotencyKey?: string,
+    route?: string
   ) {
-    const response = await this.createTaskResponse(service, action, params, idempotencyKey);
+    const response = await this.createTaskResponse(service, action, params, idempotencyKey, route);
     return this.responseJson<RunApiTaskResponse>(response);
   }
 
@@ -87,9 +89,13 @@ export class RunApiClient {
     service: string,
     action: string,
     params: Record<string, unknown>,
-    idempotencyKey?: string
+    idempotencyKey?: string,
+    route?: string
   ) {
-    return this.requestResponse("POST", `/api/v1/${routeServiceSlug(service)}/${routePathSegment(action, "action")}`, {
+    const path = route
+      ? actionRoutePath(route)
+      : `/api/v1/${routeServiceSlug(service)}/${routePathSegment(action, "action")}`;
+    return this.requestResponse("POST", path, {
       auth: true,
       body: params,
       headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined
@@ -107,25 +113,34 @@ export class RunApiClient {
     return this.requestResponse("GET", resultUrl, {auth: true, signal: options.signal});
   }
 
-  async getTask(service: string, taskId: string, action?: string) {
+  async getTask(service: string, taskId: string, action?: string, options: TaskLookupOptions = {}) {
     const routeService = routeServiceSlug(service);
     const encodedTaskId = taskIdPathSegment(taskId);
-    const path = action
-      ? `/api/v1/${routeService}/${routePathSegment(action, "action")}/${encodedTaskId}`
-      : `/api/v1/${routeService}/${encodedTaskId}`;
+    const path = options.route
+      ? actionRoutePath(options.route, encodedTaskId)
+      : action
+        ? `/api/v1/${routeService}/${routePathSegment(action, "action")}/${encodedTaskId}`
+        : `/api/v1/${routeService}/${encodedTaskId}`;
     return this.request<RunApiTaskResponse>("GET", path, {
-      auth: true
+      auth: true,
+      signal: options.signal
     });
   }
 
-  async pollTask(service: string, taskId: string, action?: string, options: PollingOptions = {}) {
+  async pollTask(
+    service: string,
+    taskId: string,
+    action?: string,
+    options: PollingOptions = {},
+    lookup: TaskLookupOptions = {}
+  ) {
     const timeoutMs = options.timeoutMs ?? 120_000;
     const intervalMs = options.intervalMs ?? 5_000;
     const startedAt = Date.now();
     let lastTask: RunApiTaskResponse | undefined;
 
     while (Date.now() - startedAt < timeoutMs) {
-      const task = await this.getTask(service, taskId, action);
+      const task = await this.getTask(service, taskId, action, lookup);
       lastTask = task;
       await options.onProgress?.(task);
 

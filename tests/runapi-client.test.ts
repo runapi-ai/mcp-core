@@ -169,6 +169,35 @@ describe("RunApiClient", () => {
     );
   });
 
+  it("uses an action's public route for creation and polling", async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({ id: "550e8400-e29b-41d4-a716-446655440000", status: "queued" }));
+    const client = new RunApiClient({ apiKey: "k", baseUrl: "https://runapi.ai" }, fetchImpl as any);
+    const taskId = "550e8400-e29b-41d4-a716-446655440000";
+
+    await client.createTask("suno", "visualize_music", { source_audio_id: "audio_1" }, undefined, "/api/v1/music_visualizations");
+    expect(fetchImpl).toHaveBeenLastCalledWith(
+      new URL("https://runapi.ai/api/v1/music_visualizations"),
+      expect.objectContaining({ method: "POST", body: JSON.stringify({ source_audio_id: "audio_1" }) })
+    );
+
+    await client.getTask("suno", taskId, "visualize_music", {route: "/api/v1/music_visualizations"});
+    expect(fetchImpl).toHaveBeenLastCalledWith(
+      new URL(`https://runapi.ai/api/v1/music_visualizations/${taskId}`),
+      expect.objectContaining({ method: "GET" })
+    );
+  });
+
+  it("rejects an action route outside the public API before sending a request", async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({ id: "task_1", status: "queued" }));
+    const client = new RunApiClient({ apiKey: "k", baseUrl: "https://runapi.ai" }, fetchImpl as any);
+
+    await expect(client.createTask("suno", "visualize_music", {}, undefined, "/api/v1/../../me/balance"))
+      .rejects.toThrow("route must be a valid /api/v1 path");
+    await expect(client.getTask("suno", "550e8400-e29b-41d4-a716-446655440000", "visualize_music", {route: "https://attacker.example/steal"}))
+      .rejects.toThrow("route must be a valid /api/v1 path");
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
   it("follows only same-origin Task Result locations", async () => {
     const fetchImpl = vi.fn(async () => jsonResponse({id: "task_1", status: "processing"}));
     const client = new RunApiClient({apiKey: "k", baseUrl: "https://runapi.ai"}, fetchImpl as any);

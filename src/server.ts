@@ -96,7 +96,7 @@ export function createModelServer(options: CreateModelServerOptions): McpServer 
           });
         }
 
-        const created = await client.createTask(tool.service, tool.action, body);
+        const created = await client.createTask(tool.service, tool.action, body, undefined, action?.path);
         const taskId = taskIdFromResponse(created);
 
         if (!wait || !taskId) {
@@ -124,7 +124,7 @@ export function createModelServer(options: CreateModelServerOptions): McpServer 
               }
             });
           }
-        });
+        }, { route: action?.path });
 
         return jsonText({
             task_id: taskId,

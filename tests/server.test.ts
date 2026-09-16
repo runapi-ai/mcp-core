@@ -30,6 +30,13 @@ const tools: ModelServerTool[] = [
     models: []
   },
   {
+    name: "visualize_music",
+    description: "Visualize music with Suno Test.",
+    service: "suno-test",
+    action: "visualize_music",
+    models: []
+  },
+  {
     name: "edit_image",
     description: "Edit an image with Seedream Test.",
     service: "seedream-test",
@@ -78,7 +85,7 @@ describe("createModelServer", () => {
   it("registers the login tool and injected model tools by default", async () => {
     mcpClient = await connect(mockClient().client);
     const tools = await mcpClient.listTools();
-    expect(tools.tools.map((t) => t.name).sort()).toEqual(["create_image", "create_lyrics", "create_music", "edit_image", "login"]);
+    expect(tools.tools.map((t) => t.name).sort()).toEqual(["create_image", "create_lyrics", "create_music", "edit_image", "login", "visualize_music"]);
   });
 
   it("publishes array cardinality as JSON Schema without narrowing model-specific limits", async () => {
@@ -107,7 +114,7 @@ describe("createModelServer", () => {
   it("can opt out of auth tools", async () => {
     mcpClient = await connect(mockClient().client, { authTools: false });
     const tools = await mcpClient.listTools();
-    expect(tools.tools.map((t) => t.name).sort()).toEqual(["create_image", "create_lyrics", "create_music", "edit_image"]);
+    expect(tools.tools.map((t) => t.name).sort()).toEqual(["create_image", "create_lyrics", "create_music", "edit_image", "visualize_music"]);
   });
 
   it("validates and creates a task without attaching pricing data", async () => {
@@ -117,7 +124,7 @@ describe("createModelServer", () => {
     const result = await mcpClient.callTool({ name: "create_image", arguments: { prompt: "a cat", wait: false } });
     const payload = parseText(result);
 
-    expect(createTask).toHaveBeenCalledWith("flux-test", "text_to_image", { prompt: "a cat", model: "flux-test-pro" });
+    expect(createTask).toHaveBeenCalledWith("flux-test", "text_to_image", { prompt: "a cat", model: "flux-test-pro" }, undefined, undefined);
     expect(payload).toMatchObject({ task_id: "task_1", status: "queued" });
     expect(payload.price).toBeUndefined();
   });
@@ -129,7 +136,7 @@ describe("createModelServer", () => {
     const result = await mcpClient.callTool({ name: "create_lyrics", arguments: { prompt: "ok", wait: false } });
     const payload = parseText(result);
 
-    expect(createTask).toHaveBeenCalledWith("suno-test", "generate_lyrics", { prompt: "ok" });
+    expect(createTask).toHaveBeenCalledWith("suno-test", "generate_lyrics", { prompt: "ok" }, undefined, undefined);
     expect(payload.error).toBeUndefined();
     expect(payload).toMatchObject({ task_id: "task_1", status: "queued" });
     expect(payload.price).toBeUndefined();
@@ -149,7 +156,7 @@ describe("createModelServer", () => {
       arguments: { prompt: "😀😀", wait: false }
     });
     expect(parseText(result).error).toBeUndefined();
-    expect(createTask).toHaveBeenCalledWith("suno-test", "generate_lyrics", { prompt: "😀😀" });
+    expect(createTask).toHaveBeenCalledWith("suno-test", "generate_lyrics", { prompt: "😀😀" }, undefined, undefined);
   });
 
   it("preserves JSON Schema length metadata for the public Zod 3 shape builder", async () => {
@@ -181,7 +188,7 @@ describe("createModelServer", () => {
     expect(createTask).toHaveBeenCalledWith("seedream-test", "edit_image", {
       source_image_urls: ["https://example.test/a.png"],
       model: "seedream-test-resolution"
-    });
+    }, undefined, undefined);
     expect(payload).toMatchObject({ task_id: "task_1", status: "queued" });
   });
 
@@ -197,6 +204,18 @@ describe("createModelServer", () => {
 
     expect(payload.error).toBeDefined();
     expect(createTask).not.toHaveBeenCalled();
+  });
+
+  it("creates and polls on an action's public route when the contract publishes one", async () => {
+    const { client, createTask, pollTask } = mockClient();
+    mcpClient = await connect(client);
+
+    const created = await mcpClient.callTool({ name: "visualize_music", arguments: { source_audio_id: "audio_1", wait: false } });
+    expect(parseText(created).error).toBeUndefined();
+    expect(createTask).toHaveBeenCalledWith("suno-test", "visualize_music", { source_audio_id: "audio_1" }, undefined, "/api/v1/music_visualizations");
+
+    await mcpClient.callTool({ name: "visualize_music", arguments: { source_audio_id: "audio_1" } });
+    expect(pollTask).toHaveBeenCalledWith("suno-test", "task_1", "visualize_music", expect.objectContaining({ intervalMs: 5_000 }), { route: "/api/v1/music_visualizations" });
   });
 
   it("rejects requests that violate the endpoint input rules without calling the client", async () => {

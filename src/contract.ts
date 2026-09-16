@@ -1,6 +1,8 @@
 import type { Contract, ContractAction, ContractField, ModelInfo } from "./types.js";
 import { contractKey, modalityForAction, routeAction } from "./text.js";
 
+const ACTION_ROUTE_PATTERN = /^\/api\/v1(?:\/[A-Za-z0-9_-]+)+$/;
+
 export function listContractModels(source: Contract): ModelInfo[] {
   return Object.entries(source.actions).flatMap(([key, action]) => {
     const [service, actionSlug] = key.split("/");
@@ -34,18 +36,31 @@ export function listActionGroups(source: Contract) {
 
 export function findAction(service: string, action: string, source: Contract): ContractAction | undefined {
   const direct = source.actions[contractKey(service, action)];
-  if (direct) {
-    return direct;
-  }
+  const candidates = Object.entries(source.actions)
+    .filter(([key, value]) => key.split("/", 1)[0] === service && value.endpoint === action)
+    .map(([, value]) => value);
+  const entries = direct ? [direct, ...candidates.filter((candidate) => candidate !== direct)] : candidates;
 
-  return Object.entries(source.actions).find(([key, value]) => {
-    const [candidateService] = key.split("/");
-    return candidateService === service && value.endpoint === action;
-  })?.[1];
+  // An endpoint can carry both a deprecated operation and the provider-neutral
+  // resource that replaced it; only the resource publishes a public route and
+  // accepts the canonical fields, so it is the action this endpoint resolves to.
+  return entries.find((candidate) => candidate.path) ?? entries[0];
 }
 
 export function findModel(model: string, source: Contract): ModelInfo | undefined {
   return listContractModels(source).find((entry) => entry.model === model);
+}
+
+// A contract action may publish its own public route: a provider-neutral
+// resource lives at the API root rather than under its service slug. The route
+// is validated so a malformed contract cannot escape `/api/v1`.
+export function actionRoutePath(route: string, taskIdSegment?: string): string {
+  const path = route.replace(/\/+$/, "");
+  if (!ACTION_ROUTE_PATTERN.test(path)) {
+    throw new TypeError("route must be a valid /api/v1 path");
+  }
+
+  return taskIdSegment ? `${path}/${taskIdSegment}` : path;
 }
 
 export function findModels(model: string, source: Contract): ModelInfo[] {
