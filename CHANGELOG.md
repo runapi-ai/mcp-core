@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.4.5](https://github.com/runapi-ai/mcp-core/releases/tag/v0.4.5) - 2026-09-28
+
+### Fixed
+- Accept declared union field types and preserve arbitrary keys in explicitly open object inputs.
+
+
 ## [v0.4.4](https://github.com/runapi-ai/mcp-core/releases/tag/v0.4.4) - 2026-09-16
 
 ### Added

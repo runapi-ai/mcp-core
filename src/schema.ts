@@ -33,6 +33,9 @@ function zodForField(name: string, field: ContractField, stringLengthMode: Strin
 
   if (field.enum?.length) {
     schema = z.union(field.enum.map((value) => literalFor(value)) as [z.ZodLiteral<unknown>, z.ZodLiteral<unknown>, ...z.ZodLiteral<unknown>[]]);
+  } else if (Array.isArray(field.type)) {
+    const variants = field.type.map((type) => zodForField(name, { ...field, type, required: true }, stringLengthMode));
+    schema = variants.length === 1 ? variants[0] : z.union(variants as [z.ZodTypeAny, z.ZodTypeAny, ...z.ZodTypeAny[]]);
   } else if (field.type === "string" || field.length) {
     let stringSchema = z.string();
     if (stringLengthMode === "native" && min !== undefined) {
@@ -76,9 +79,14 @@ function zodForField(name: string, field: ContractField, stringLengthMode: Strin
     }
     schema = arraySchema;
   } else if (field.type === "object") {
-    schema = field.properties
-      ? z.object(zodShapeForFieldsWithMode(field.properties, stringLengthMode))
-      : z.record(z.unknown());
+    const objectSchema = z.object(zodShapeForFieldsWithMode(field.properties ?? {}, stringLengthMode));
+    if (field.additionalProperties === false) {
+      schema = objectSchema.strict();
+    } else if (field.additionalProperties === true || !field.properties) {
+      schema = objectSchema.passthrough();
+    } else {
+      schema = objectSchema;
+    }
   } else {
     schema = z.unknown();
   }
@@ -105,6 +113,9 @@ function mcpZodForField(name: string, field: ContractField): ZodV4Schema {
 
   if (field.enum?.length) {
     schema = z4.union(field.enum.map((value) => z4.literal(value as Literal)));
+  } else if (Array.isArray(field.type)) {
+    const variants = field.type.map((type) => mcpZodForField(name, { ...field, type, required: true }));
+    schema = variants.length === 1 ? variants[0] : z4.union(variants);
   } else if (field.type === "string" || field.length) {
     let stringSchema = z4.string();
     if (field.pattern) {
@@ -143,7 +154,14 @@ function mcpZodForField(name: string, field: ContractField): ZodV4Schema {
     }
     schema = arraySchema;
   } else if (field.type === "object") {
-    schema = field.properties ? z4.object(mcpZodShapeForFields(field.properties)) : z4.record(z4.string(), z4.unknown());
+    const objectSchema = z4.object(mcpZodShapeForFields(field.properties ?? {}));
+    if (field.additionalProperties === false) {
+      schema = objectSchema.strict();
+    } else if (field.additionalProperties === true || !field.properties) {
+      schema = objectSchema.passthrough();
+    } else {
+      schema = objectSchema;
+    }
   } else {
     schema = z4.unknown();
   }

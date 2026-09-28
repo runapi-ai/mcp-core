@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { validateParams, zodShapeForFields } from "../src/schema.js";
+import { z as z4 } from "zod/v4";
+import { mcpZodShapeForFields, validateParams } from "../src/schema.js";
 import type { ContractField } from "../src/types.js";
 
 const fields: Record<string, ContractField> = {
@@ -9,6 +10,41 @@ const fields: Record<string, ContractField> = {
 };
 
 describe("schema", () => {
+  describe.each([
+    ["runtime", validateParams],
+    ["tool input", (fields: Record<string, ContractField>, params: Record<string, unknown>) => z4.object(mcpZodShapeForFields(fields)).parse(params)]
+  ] as const)("%s structured data", (_name, parse) => {
+    const structuredFields: Record<string, ContractField> = {
+      state: { type: ["string", "object", "array"], required: true, additionalProperties: true },
+      questions: {
+        type: "object",
+        required: true,
+        additionalProperties: true,
+        properties: { known: { type: "object", additionalProperties: true } }
+      }
+    };
+
+    it("preserves open properties at every nesting level", () => {
+      const input = {
+        state: { customer: { history: [null, false, 3] } },
+        questions: {
+          known: { instructions: { prompt: "Classify" }, criteria: { one: null, two: ["description"] } },
+          custom: { type: "noul", instructions: ["Decide"] }
+        }
+      };
+      expect(parse(structuredFields, input)).toEqual(input);
+    });
+
+    it("accepts text and array state while rejecting unsupported or absent state", () => {
+      for (const state of ["ticket text", [{ text: "hello" }, null, 3]]) {
+        expect(parse(structuredFields, { state, questions: {} })).toEqual({ state, questions: {} });
+      }
+      for (const state of [null, true, 3, undefined]) {
+        expect(() => parse(structuredFields, { state, questions: {} })).toThrow();
+      }
+    });
+  });
+
   it("accepts valid params and passes through extras", () => {
     expect(validateParams(fields, { prompt: "hi", steps: 10, extra: true })).toMatchObject({
       prompt: "hi",
@@ -49,11 +85,6 @@ describe("schema", () => {
 
     expect(validateParams(lengthFields, { prompt: "😀😀" })).toMatchObject({ prompt: "😀😀" });
     expect(() => validateParams(lengthFields, { prompt: "😀😀😀" })).toThrow("prompt must be at most 2 characters");
-  });
-
-  it("exposes a reusable zod shape builder", () => {
-    const shape = zodShapeForFields(fields);
-    expect(Object.keys(shape).sort()).toEqual(["mode", "prompt", "steps"]);
   });
 
   it("enforces nested array item contracts", () => {

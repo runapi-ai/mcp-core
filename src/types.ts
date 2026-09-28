@@ -8,13 +8,14 @@ export type ContractField = {
   maximum?: number;
   // When true, min/max are string-length bounds rather than numeric value bounds.
   length?: boolean;
-  type?: string;
+  type?: string | string[];
   description?: string;
   pattern?: string;
   min_items?: number;
   max_items?: number;
   items?: ContractField;
   properties?: Record<string, ContractField>;
+  additionalProperties?: boolean;
 };
 
 export type ContractAction = {
