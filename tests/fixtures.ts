@@ -1,10 +1,10 @@
-import type { Contract, InputRule } from "../src/types.js";
+import type { Contract } from "../src/types.js";
 
 export const fixtureContract: Contract = {
   actions: {
     // Divergent-required fixture: one model requires aspect_ratio + output_quality,
-    // the other requires only source_image_urls (the rest optional). Exercises
-    // per-model required validation against a single advertised tool schema.
+    // the other requires only source_image_urls (the rest optional). Both share
+    // one advertised tool schema; RunAPI enforces each model's requirements.
     "seedream-test/edit-image": {
       model: "Seedream Test",
       endpoint: "edit_image",
@@ -73,21 +73,4 @@ export const fixtureContract: Contract = {
       }
     }
   }
-};
-
-export const sunoInputRules: Record<string, InputRule[]> = {
-  text_to_music: [
-    {
-      when: { vocal_mode: "auto_lyrics" },
-      required: ["prompt"],
-      forbidden: ["lyrics", "style", "title"],
-      description: "auto_lyrics requires prompt and must not include lyrics, style, or title."
-    },
-    {
-      when: { vocal_mode: "instrumental" },
-      required: ["style", "title"],
-      forbidden: ["prompt", "lyrics"],
-      description: "instrumental requires style and title, and must not include prompt or lyrics."
-    }
-  ]
 };

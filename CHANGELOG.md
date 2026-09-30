@@ -1,5 +1,16 @@
 # Changelog
 
+## [v0.5.0](https://github.com/runapi-ai/mcp-core/releases/tag/v0.5.0) - 2026-09-30
+
+### Changed
+- Send tool arguments to the service without local model, enum, range, required-field, or cross-field validation. Tool descriptions still list declared types and known values.
+  Migration: Invalid arguments now return the service's error, including its message, instead of a local tool-input rejection.
+
+### Removed
+- Remove `validateParams`, `validateInputRules`, `inputRulesForModel`, `zodShapeForFields`, the `InputRule` type, and the `inputRules` server option.
+  Migration: Build tool schemas with `mcpZodShapeForFields` and drop the `inputRules` option; the service validates tool arguments.
+
+
 ## [v0.4.5](https://github.com/runapi-ai/mcp-core/releases/tag/v0.4.5) - 2026-09-28
 
 ### Fixed

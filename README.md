@@ -2,7 +2,7 @@
 
 Reusable TypeScript primitives for building RunAPI Model Context Protocol servers.
 
-`@runapi.ai/mcp-core` is the shared library used by the aggregate RunAPI MCP server and the per-model-line MCP servers. It provides the RunAPI HTTP client, contract helpers, runtime pricing lookup, input validation, tool response helpers, and `createModelServer` for turning embedded RunAPI catalog data into MCP tools.
+`@runapi.ai/mcp-core` is the shared library used by the aggregate RunAPI MCP server and the per-model-line MCP servers. It provides the RunAPI HTTP client, contract helpers, runtime pricing lookup, tool response helpers, and `createModelServer` for turning embedded RunAPI catalog data into MCP tools.
 
 This package is a library. If you want a ready-to-run MCP server, use one of these packages instead:
 
@@ -25,8 +25,7 @@ Node.js 22 or newer is required.
 | `createModelServer` | Build an MCP server from embedded contract and tool metadata. |
 | Contract helpers | Resolve actions, models, fields, declared tool schemas, and action groups. |
 | Runtime pricing helpers | Look up the current Price Schedule or request a Price Quote. |
-| Schema helpers | Convert RunAPI contract fields into Zod shapes and validate request params. |
-| Input rules | Validate endpoint-level cross-field requirements before creating a task. |
+| Schema helpers | Describe RunAPI fields in permissive tool schemas without enforcing API business constraints. |
 | Response helpers | Format JSON MCP tool responses and friendly errors. |
 
 ## Basic Usage
@@ -73,7 +72,6 @@ const server = createModelServer({
   version: "0.1.0",
   lineSlug: "example",
   contract,
-  inputRules: {},
   tools,
   client: new RunApiClient()
 });
@@ -116,6 +114,13 @@ Do not derive the key from a JSON-RPC request ID or `X-Client-Request-Id`, and d
 `@runapi.ai/mcp-core` does not read catalog or pricing files at runtime. Server packages pass their embedded Input Contract into the library; pricing is resolved from the current RunAPI Price Schedule.
 
 The package is ESM-only and ships TypeScript declarations.
+
+API request parameters are validated by the service, not against embedded model lists,
+enum values, ranges, required fields, or cross-field rules. Explicit future model ids
+and parameter values are forwarded unchanged; service errors retain their message in
+the normal MCP error response. Discovered tool schemas retain declared field types,
+array items, and required-field hints for clients and completion. These hints do not
+enforce business inputs in the server; MCP-owned polling controls remain validated.
 
 ## Links
 

@@ -1,11 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { zodShapeForFields } from "../src/schema.js";
 import { createModelServer, type ModelServerTool } from "../src/server.js";
-import type { RunApiClient } from "../src/runapi-client.js";
-import { fixtureContract, sunoInputRules } from "./fixtures.js";
+import { RunApiClient } from "../src/runapi-client.js";
+import { fixtureContract } from "./fixtures.js";
 
 const tools: ModelServerTool[] = [
   {
@@ -57,7 +55,6 @@ async function connect(client: RunApiClient, options: { authTools?: false } = {}
     version: "1.2.3",
     lineSlug: "flux-test",
     contract: fixtureContract,
-    inputRules: sunoInputRules,
     tools,
     client,
     ...options
@@ -88,27 +85,25 @@ describe("createModelServer", () => {
     expect(tools.tools.map((t) => t.name).sort()).toEqual(["create_image", "create_lyrics", "create_music", "edit_image", "login", "visualize_music"]);
   });
 
-  it("publishes array cardinality as JSON Schema without narrowing model-specific limits", async () => {
-    const { client, createTask } = mockClient();
-    mcpClient = await connect(client);
+  it("advertises field types and required hints without enforcing business inputs", async () => {
+    const requests: Record<string, unknown>[] = [];
+    const client = new RunApiClient({ apiKey: "test_key", baseUrl: "https://api.runapi.ai" }, (async (_url, init) => {
+      requests.push(JSON.parse(String(init?.body)));
+      return new Response(JSON.stringify({ message: "server decides prompt" }), { status: 400 });
+    }) as typeof fetch);
+    mcpClient = await connect(client, { authTools: false });
     const listed = await mcpClient.listTools();
-    const tool = listed.tools.find((candidate) => candidate.name === "edit_image");
-    const field = (tool?.inputSchema.properties?.source_image_urls ?? {}) as Record<string, unknown>;
-
-    expect(field).toMatchObject({ type: "array", minItems: 1, maxItems: 3 });
-
-    const result = await mcpClient.callTool({
-      name: "edit_image",
-      arguments: {
-        model: "seedream-test-quality",
-        source_image_urls: ["a", "b", "c"],
-        aspect_ratio: "1:1",
-        output_quality: "high",
-        wait: false
-      }
-    });
-    expect(parseText(result).error).toContain("source_image_urls must contain between 1 and 2 items");
-    expect(createTask).not.toHaveBeenCalled();
+    const image = listed.tools.find((tool) => tool.name === "create_image")!;
+    expect(image.inputSchema.properties?.prompt).toMatchObject({ type: "string" });
+    expect(image.inputSchema.properties?.steps).toMatchObject({ type: "integer" });
+    expect(image.inputSchema.required).toContain("prompt");
+    const edit = listed.tools.find((tool) => tool.name === "edit_image")!;
+    expect(edit.inputSchema.properties?.source_image_urls).toMatchObject({ type: "array", items: {} });
+    for (const params of [{ model: 173, prompt: 17 }, { model: "future-model" }]) {
+      const result = await mcpClient.callTool({ name: "create_image", arguments: { ...params, wait: false } });
+      expect(parseText(result)).toEqual({ error: "server decides prompt" });
+    }
+    expect(requests).toEqual([{ model: 173, prompt: 17 }, { model: "future-model" }]);
   });
 
   it("can opt out of auth tools", async () => {
@@ -117,7 +112,7 @@ describe("createModelServer", () => {
     expect(tools.tools.map((t) => t.name).sort()).toEqual(["create_image", "create_lyrics", "create_music", "edit_image", "visualize_music"]);
   });
 
-  it("validates and creates a task without attaching pricing data", async () => {
+  it("creates a task without attaching pricing data", async () => {
     const { client, createTask } = mockClient();
     mcpClient = await connect(client);
 
@@ -142,38 +137,6 @@ describe("createModelServer", () => {
     expect(payload.price).toBeUndefined();
   });
 
-  it("publishes code-point string limits and accepts astral characters within them", async () => {
-    const { client, createTask } = mockClient();
-    mcpClient = await connect(client);
-    const listed = await mcpClient.listTools();
-    const tool = listed.tools.find((candidate) => candidate.name === "create_lyrics");
-    const field = (tool?.inputSchema.properties?.prompt ?? {}) as Record<string, unknown>;
-
-    expect(field).toMatchObject({ type: "string", maxLength: 2 });
-
-    const result = await mcpClient.callTool({
-      name: "create_lyrics",
-      arguments: { prompt: "😀😀", wait: false }
-    });
-    expect(parseText(result).error).toBeUndefined();
-    expect(createTask).toHaveBeenCalledWith("suno-test", "generate_lyrics", { prompt: "😀😀" }, undefined, undefined);
-  });
-
-  it("preserves JSON Schema length metadata for the public Zod 3 shape builder", async () => {
-    const server = new McpServer({ name: "legacy-shape-test", version: "0.0.0" });
-    server.tool(
-      "legacy_shape",
-      zodShapeForFields({ prompt: { type: "string", length: true, max: 2 } }),
-      async () => ({ content: [{ type: "text" as const, text: "ok" }] })
-    );
-    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
-    mcpClient = new Client({ name: "test", version: "0.0.0" });
-    await Promise.all([server.connect(serverTransport), mcpClient.connect(clientTransport)]);
-
-    const listed = await mcpClient.listTools();
-    expect(listed.tools[0]?.inputSchema.properties?.prompt).toMatchObject({ type: "string", maxLength: 2 });
-  });
-
   it("accepts a request that omits a field only its sibling model requires", async () => {
     const { client, createTask } = mockClient();
     mcpClient = await connect(client);
@@ -192,20 +155,6 @@ describe("createModelServer", () => {
     expect(payload).toMatchObject({ task_id: "task_1", status: "queued" });
   });
 
-  it("rejects a request missing a field the selected model requires (divergent required)", async () => {
-    const { client, createTask } = mockClient();
-    mcpClient = await connect(client);
-
-    const result = await mcpClient.callTool({
-      name: "edit_image",
-      arguments: { model: "seedream-test-quality", source_image_urls: ["https://example.test/a.png"], output_quality: "high", wait: false }
-    });
-    const payload = parseText(result);
-
-    expect(payload.error).toBeDefined();
-    expect(createTask).not.toHaveBeenCalled();
-  });
-
   it("creates and polls on an action's public route when the contract publishes one", async () => {
     const { client, createTask, pollTask } = mockClient();
     mcpClient = await connect(client);
@@ -218,14 +167,17 @@ describe("createModelServer", () => {
     expect(pollTask).toHaveBeenCalledWith("suno-test", "task_1", "visualize_music", expect.objectContaining({ intervalMs: 5_000 }), { route: "/api/v1/music_visualizations" });
   });
 
-  it("rejects requests that violate the endpoint input rules without calling the client", async () => {
-    const { client, createTask } = mockClient();
-    mcpClient = await connect(client);
+  it("returns the service's 400 error for future inputs rather than local validation", async () => {
+    const fetchImpl = vi.fn(async () => new Response("future mode requires a reference", { status: 400 }));
+    const client = new RunApiClient({ apiKey: "test_key", baseUrl: "https://api.runapi.ai" }, fetchImpl as typeof fetch);
+    mcpClient = await connect(client, { authTools: false });
 
-    const result = await mcpClient.callTool({ name: "create_music", arguments: { vocal_mode: "instrumental", wait: false } });
-    const payload = parseText(result);
+    const result = await mcpClient.callTool({
+      name: "create_music",
+      arguments: { model: "suno-future", vocal_mode: "future_mode", future_parameter: true, wait: false }
+    });
 
-    expect(payload.error).toContain("requires style, title");
-    expect(createTask).not.toHaveBeenCalled();
+    expect(parseText(result)).toEqual({ error: "future mode requires a reference" });
+    expect(fetchImpl).toHaveBeenCalledOnce();
   });
 });

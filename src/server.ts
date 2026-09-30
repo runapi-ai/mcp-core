@@ -1,9 +1,8 @@
 import { z } from "zod/v4";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { Contract, ContractField, InputRule, RunApiTaskResponse } from "./types.js";
-import { declaredFieldsForAction, findAction, findModelForAction } from "./contract.js";
-import { validateInputRules } from "./input-rules.js";
-import { mcpZodShapeForFields, validateParams } from "./schema.js";
+import type { Contract, ContractField, RunApiTaskResponse } from "./types.js";
+import { declaredFieldsForAction, findAction } from "./contract.js";
+import { mcpZodObjectForFields } from "./schema.js";
 import { RunApiClient, taskIdFromResponse, taskStatus } from "./runapi-client.js";
 import { friendlyError } from "./errors.js";
 import { jsonText } from "./tool-response.js";
@@ -22,7 +21,6 @@ export type CreateModelServerOptions = {
   version: string;
   lineSlug: string;
   contract: Contract;
-  inputRules: Record<string, InputRule[]>;
   tools: ModelServerTool[];
   // Additive optional injection beyond the base field set:
   // lets tests pass a mock and lets a per-model server pass a pre-configured
@@ -33,11 +31,9 @@ export type CreateModelServerOptions = {
 };
 
 // Builds a per-model RunAPI MCP server from injected catalog data — no disk
-// access. Each tool creates and optionally polls a RunAPI task for its
-// service/action, validating params against the tool's inputSchema and the
-// endpoint's cross-field input rules.
+// access. API parameters are forwarded unchanged; RunAPI validates them.
 export function createModelServer(options: CreateModelServerOptions): McpServer {
-  const { name, version, lineSlug, contract, inputRules, tools, client = new RunApiClient() } = options;
+  const { name, version, lineSlug, contract, tools, client = new RunApiClient() } = options;
 
   const server = new McpServer(
     {
@@ -60,7 +56,10 @@ export function createModelServer(options: CreateModelServerOptions): McpServer 
   for (const tool of tools) {
     const action = findAction(tool.service, tool.action, contract);
     const declaredFields = action ? declaredFieldsForAction(action) : {};
-    server.tool(tool.name, tool.description, toolShape(declaredFields, tool.models), async (args, extra) => {
+    server.registerTool(tool.name, {
+      description: tool.description,
+      inputSchema: toolSchema(declaredFields, tool.models)
+    }, async (args, extra) => {
       const { wait = true, timeout_ms, poll_interval_ms, model, ...params } = args as Record<string, unknown> & {
         wait?: boolean;
         timeout_ms?: number;
@@ -69,32 +68,13 @@ export function createModelServer(options: CreateModelServerOptions): McpServer 
       };
 
       try {
-        const info = findModelForAction(tool.service, tool.action, model, contract);
-        if (!info) {
-          return jsonText({
-            error: "Unsupported RunAPI service/action/model combination.",
-            hint: "This model server was generated for a specific model line; verify the requested model."
-          });
-        }
-
-        // Validate against the resolved model's own field roster so divergent
-        // per-model required fields are enforced correctly (the advertised tool
-        // schema declares the union with required relaxed to the intersection).
-        // Send the resolved model (explicit arg or the line's default) so
-        // model-optional create calls still satisfy endpoints that require it.
-        // No-model endpoints (models: []) resolve without a model — omit it.
-        const body = validateParams(info.fields, {
+        // Preserve explicit future models and use the known default only when
+        // omitted. Endpoints with no model roster never send a model.
+        const selectedModel = tool.models.length > 0 ? model ?? tool.models[0] : undefined;
+        const body = {
           ...params,
-          ...(info.model ? { model: info.model } : {})
-        });
-
-        const ruleError = validateInputRules(inputRules[tool.action] ?? [], body);
-        if (ruleError) {
-          return jsonText({
-            error: `Invalid RunAPI parameters: ${ruleError}`,
-            hint: "Adjust the parameters to satisfy the endpoint input rules before retrying."
-          });
-        }
+          ...(selectedModel === undefined ? {} : { model: selectedModel })
+        };
 
         const created = await client.createTask(tool.service, tool.action, body, undefined, action?.path);
         const taskId = taskIdFromResponse(created);
@@ -140,19 +120,18 @@ export function createModelServer(options: CreateModelServerOptions): McpServer 
   return server;
 }
 
-function toolShape(fields: Record<string, ContractField>, models: string[]): Record<string, z.ZodType<any, any>> {
-  const shape: Record<string, z.ZodType<any, any>> = {
-    ...mcpZodShapeForFields(fields),
+function toolSchema(fields: Record<string, ContractField>, models: string[]): z.ZodObject<any> {
+  const extras: Record<string, z.ZodType<any, any>> = {
     wait: z.boolean().default(true).describe("Poll until the task reaches a terminal status."),
     timeout_ms: z.number().int().positive().optional(),
     poll_interval_ms: z.number().int().positive().optional()
   };
 
   if (models.length > 0) {
-    shape.model = z.enum(models as [string, ...string[]]).optional().describe("RunAPI model slug for this model line.");
+    extras.model = z.unknown().optional().meta({ type: "string" }).describe("RunAPI model slug for this model line.");
   }
 
-  return shape;
+  return mcpZodObjectForFields(fields, extras);
 }
 
 export function defaultTimeout(action: string): number {

@@ -26,8 +26,6 @@ export type ContractAction = {
   // The action's public route when it is not `/api/v1/<service>/<endpoint>` —
   // a provider-neutral resource is published at the API root instead.
   path?: string;
-  // Endpoint-level cross-field rules (ADR-0010), a sibling of fields_by_model.
-  rules?: InputRule[];
   fields_by_model: Record<string, Record<string, ContractField>>;
 };
 
@@ -113,13 +111,4 @@ export type PollingOptions = {
 export type TaskLookupOptions = {
   route?: string;
   signal?: AbortSignal;
-};
-
-export type InputRule = {
-  when?: Record<string, unknown>;
-  required?: string[];
-  required_any?: string[];
-  forbidden?: string[];
-  enum?: Record<string, unknown[]>;
-  description?: string;
 };

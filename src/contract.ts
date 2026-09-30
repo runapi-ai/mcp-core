@@ -107,23 +107,8 @@ export function fieldsForModel(action: ContractAction, model: string): Record<st
 
 const RESERVED_DECLARED_FIELDS = new Set(["model"]);
 
-// Union of every roster's fields for an action's advertised tool schema.
-//
-// Canonical fields share type/shape across models (ADR-0007); what diverges per
-// model is the allowed value set and whether the field is required. So the
-// advertised schema is the loosest envelope that accepts every model's valid
-// input, and the per-model runtime check (validateParams against the resolved
-// roster) does the precise enforcement:
-//   - required: only when required in every roster (the safe intersection);
-//     divergent-required fields stay optional here.
-//   - enum: the union of every roster's values, but only when every roster that
-//     defines the field constrains it — if any model leaves it free-form, the
-//     field is advertised unconstrained. Otherwise the declared schema could
-//     reject a value valid for one model before its runtime check runs.
-//   - array item count: the loosest envelope across models for the advertised
-//     schema; selected-model runtime validation enforces the precise roster.
-//   - other constraints (type/min/max): first-seen, since canonical fields do
-//     not diverge on those.
+// Union of known field metadata for tool guidance. The schema builders expose
+// it descriptively; RunAPI remains the sole authority for input validation.
 export function declaredFieldsForAction(action: ContractAction): Record<string, ContractField> {
   const rosters = action.models.length > 0 ? action.models : ["_"];
   const defsByName = new Map<string, ContractField[]>();

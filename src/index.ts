@@ -4,3 +4,4 @@ export * from "./login.js";
 export * from "./runapi-client.js";
 export * from "./server.js";
 export * from "./runtime-pricing.js";
+export * from "./schema.js";
