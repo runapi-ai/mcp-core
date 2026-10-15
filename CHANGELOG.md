@@ -1,5 +1,16 @@
 # Changelog
 
+## [v0.6.0](https://github.com/runapi-ai/mcp-core/releases/tag/v0.6.0) - 2026-10-15
+
+### Breaking
+- Change prompt IDs from numbers to prm_ strings and remove the featured search parameter and legacy service, action, runapi_model, and featured result fields.
+  Migration: Update consumers to string IDs, remove featured arguments, and use prompt and eligible_endpoints instead of the legacy prompt metadata.
+
+### Fixed
+- Use explicit retirement metadata to exclude retired media models from discovery and creation recommendations.
+  Migration: Query existing tasks with get_task. Retirement replacements are informational and do not remap model IDs.
+
+
 ## [v0.5.0](https://github.com/runapi-ai/mcp-core/releases/tag/v0.5.0) - 2026-09-30
 
 ### Changed

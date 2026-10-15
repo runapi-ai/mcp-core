@@ -1,8 +1,66 @@
+import { existsSync, readFileSync } from "node:fs";
+import type { Contract } from "../src/types.js";
 import { describe, expect, it } from "vitest";
 import { declaredFieldsForAction, fieldSummary, findModel, findModelForAction, findModels, listActionGroups, listContractModels } from "../src/contract.js";
 import { fixtureContract } from "./fixtures.js";
 
+describe("retired contract models", () => {
+  const contract: Contract = {
+    retired_models: {
+      elevenlabs: { provider: "ElevenLabs", versions: [{ id: "audio-isolation" }] }
+    },
+    actions: {
+      "elevenlabs/isolate-audio": {
+        model: "ElevenLabs", endpoint: "isolate_audio",
+        models: ["audio-isolation", "active-audio"],
+        fields_by_model: { "active-audio": { prompt: { required: true } } }
+      },
+      "elevenlabs/retired-audio": {
+        model: "ElevenLabs", endpoint: "retired_audio",
+        models: ["audio-isolation"], fields_by_model: {}
+      },
+      "other/isolate-audio": {
+        model: "Other", endpoint: "isolate_audio",
+        models: ["audio-isolation"], fields_by_model: {}
+      }
+    }
+  };
+
+  it("filters retirement by family across discovery and lookup", () => {
+    expect(listContractModels(contract).map(({ service, model }) => [service, model])).toEqual([
+      ["elevenlabs", "active-audio"], ["other", "audio-isolation"]
+    ]);
+    expect(findModels("audio-isolation", contract).map(({ service }) => service)).toEqual(["other"]);
+    expect(findModel("active-audio", contract)?.fields.prompt.required).toBe(true);
+    const retiredOnly = { ...contract, actions: { "elevenlabs/retired-audio": contract.actions["elevenlabs/retired-audio"] } };
+    expect(findModel("audio-isolation", retiredOnly)).toBeUndefined();
+    expect(findModels("audio-isolation", retiredOnly)).toEqual([]);
+  });
+
+  it("rejects explicit retired models and defaults to an active model", () => {
+    expect(findModelForAction("elevenlabs", "isolate_audio", "audio-isolation", contract)).toBeUndefined();
+    expect(findModelForAction("elevenlabs", "isolate_audio", undefined, contract)?.model).toBe("active-audio");
+    expect(findModelForAction("elevenlabs", "retired_audio", undefined, contract)).toBeUndefined();
+  });
+});
+
 describe("contract queries (injection)", () => {
+  const aggregateContractUrl = new URL("../../aggregate/data/contract.json", import.meta.url);
+
+  it.skipIf(!existsSync(aggregateContractUrl))("omits retired models and their exclusive actions from the shipped aggregate catalog", () => {
+    const contract = JSON.parse(readFileSync(aggregateContractUrl, "utf8")) as Contract;
+    const models = listContractModels(contract).map((model) => model.model);
+    for (const retired of ["sound-effect-v2", "speech-to-text", "kling-ai-avatar-v1-pro", "kling-v1-avatar-standard", "luma-modify-video", "audio-isolation", "ideogram-v3-reframe", "runway-aleph"]) {
+      expect(models).not.toContain(retired);
+      expect(findModels(retired, contract)).toEqual([]);
+    }
+    for (const action of ["elevenlabs/isolate-audio", "elevenlabs/speech-to-text", "elevenlabs/text-to-sound", "luma/modify-video", "ideogram-v3/reframe-image", "runway-aleph/edit-video"]) {
+      expect(contract.actions).not.toHaveProperty(action);
+    }
+    expect(findModels("kling-ai-avatar-pro", contract)).not.toEqual([]);
+    expect(findModels("kling-ai-avatar-standard", contract)).not.toEqual([]);
+  });
+
   it("lists every model from the injected contract", () => {
     const models = listContractModels(fixtureContract);
     expect(models.map((m) => m.model).sort()).toEqual([

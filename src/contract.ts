@@ -3,10 +3,15 @@ import { contractKey, modalityForAction, routeAction } from "./text.js";
 
 const ACTION_ROUTE_PATTERN = /^\/api\/v1(?:\/[A-Za-z0-9_-]+)+$/;
 
+function callableModels(service: string, action: ContractAction, source: Contract): string[] {
+  const retired = new Set(source.retired_models?.[service]?.versions.map(({ id }) => id));
+  return action.models.filter((model) => !retired.has(model));
+}
+
 export function listContractModels(source: Contract): ModelInfo[] {
   return Object.entries(source.actions).flatMap(([key, action]) => {
     const [service, actionSlug] = key.split("/");
-    return action.models.map((model) => ({
+    return callableModels(service, action, source).map((model) => ({
       service,
       action: action.endpoint,
       route_action: routeAction(actionSlug),
@@ -86,8 +91,9 @@ export function findModelForAction(service: string, action: string, model: strin
     };
   }
 
-  const selectedModel = model || entry.models[0];
-  if (!entry.models.includes(selectedModel)) {
+  const models = callableModels(service, entry, source);
+  const selectedModel = model || models[0];
+  if (!selectedModel || !models.includes(selectedModel)) {
     return undefined;
   }
 
