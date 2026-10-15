@@ -31,6 +31,10 @@ export type ContractAction = {
 
 export type Contract = {
   actions: Record<string, ContractAction>;
+  retired_models?: Record<string, {
+    provider: string;
+    versions: { id: string; retired_at?: string; replacement?: string }[];
+  }>;
 };
 
 export type ModelInfo = {
@@ -65,29 +69,31 @@ export type SearchPromptsParams = {
   tags?: string[];
   q?: string;
   model?: string;
-  featured?: boolean;
   page?: number;
   per_page?: number;
 };
 
+export type RunApiPromptEndpoint = {
+  service: string;
+  action: string;
+  model: string;
+  path: string;
+};
+
 export type RunApiPrompt = {
-  id: number;
+  id: string;
   title?: string | null;
   prompt: string;
-  modality: string;
-  service?: string | null;
-  action?: string | null;
-  runapi_model?: string | null;
-  source_model?: string | null;
-  source?: string | null;
-  source_url?: string | null;
+  negative_prompt?: string | null;
+  language?: string | null;
+  modality?: string | null;
+  input_kind?: string | null;
   category?: string | null;
   tags?: string[];
-  difficulty?: string | null;
-  engagement?: unknown;
-  params?: unknown;
   preview_url?: string | null;
-  featured?: boolean;
+  source_url?: string | null;
+  published_at?: string | null;
+  eligible_endpoints: RunApiPromptEndpoint[];
 };
 
 export type RunApiPromptsResponse = {

@@ -41,7 +41,6 @@ export class RunApiClient {
     appendQuery(query, "tags", params.tags?.join(","));
     appendQuery(query, "q", params.q);
     appendQuery(query, "model", params.model);
-    appendQuery(query, "featured", params.featured);
     appendQuery(query, "page", params.page);
     appendQuery(query, "per_page", params.per_page);
 
