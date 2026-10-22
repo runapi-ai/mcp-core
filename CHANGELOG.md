@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.6.1](https://github.com/runapi-ai/mcp-core/releases/tag/v0.6.1) - 2026-10-22
+
+### Fixed
+- Upgrade @modelcontextprotocol/sdk to ^1.32.1 to address security advisories.
+
+
 ## [v0.6.0](https://github.com/runapi-ai/mcp-core/releases/tag/v0.6.0) - 2026-10-15
 
 ### Breaking
