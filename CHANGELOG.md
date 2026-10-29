@@ -1,5 +1,15 @@
 # Changelog
 
+## [v0.7.0](https://github.com/runapi-ai/mcp-core/releases/tag/v0.7.0) - 2026-10-29
+
+### Breaking
+- 【破坏性类型变更】 Require Zod >=4.6.6 and export its schema builder. Zod 3 support is deprecated and removed because Zod 3 has no patch for GHSA-mrhx-c7xc-m3w5.
+  Migration: Upgrade to Zod 4.6.6 or newer, import z from @runapi.ai/mcp-core, and migrate existing Zod 3 schemas to Zod 4 before upgrading MCP core.
+
+### Added
+- Add the optional `media` list to `RunApiPrompt`, typing each Prompt's approved example images with role, modality, media type, URL, and alt text.
+
+
 ## [v0.6.1](https://github.com/runapi-ai/mcp-core/releases/tag/v0.6.1) - 2026-10-22
 
 ### Fixed

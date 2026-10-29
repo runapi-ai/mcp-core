@@ -1,6 +1,6 @@
 {
   "name": "@runapi.ai/mcp-core",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "description": "Reusable core for building RunAPI MCP servers: client, contract/pricing/schema queries, and a createModelServer factory.",
   "type": "module",
   "main": "dist/index.js",
@@ -48,7 +48,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.1",
-    "zod": "^3.25.76"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",

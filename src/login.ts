@@ -4,7 +4,7 @@ import fs from "node:fs";
 import http, { type IncomingMessage, type ServerResponse } from "node:http";
 import os from "node:os";
 import path from "node:path";
-import { z } from "zod";
+import { z } from "zod/v4";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { DEFAULT_BASE_URL, RUNAPI_API_KEY_ENV, USER_AGENT } from "./constants.js";
 import { configPath, loadConfigDetails, readConfigFile } from "./config.js";

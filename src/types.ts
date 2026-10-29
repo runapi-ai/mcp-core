@@ -80,6 +80,14 @@ export type RunApiPromptEndpoint = {
   path: string;
 };
 
+export type RunApiPromptMedia = {
+  role?: string | null;
+  modality?: string | null;
+  media_type?: string | null;
+  url: string;
+  alt_text?: string | null;
+};
+
 export type RunApiPrompt = {
   id: string;
   title?: string | null;
@@ -91,6 +99,7 @@ export type RunApiPrompt = {
   category?: string | null;
   tags?: string[];
   preview_url?: string | null;
+  media?: RunApiPromptMedia[];
   source_url?: string | null;
   published_at?: string | null;
   eligible_endpoints: RunApiPromptEndpoint[];

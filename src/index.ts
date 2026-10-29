@@ -1,3 +1,4 @@
+export { z } from "zod/v4";
 export * from "./web.js";
 export * from "./config.js";
 export * from "./login.js";
